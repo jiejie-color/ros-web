@@ -1,11 +1,11 @@
 import type { Waypoint } from "../../../type";
-import type { Coordinate } from "../types";
+import type { Coord } from "../hooks/usePanZoom";
 
 export const hitTestWaypoint = (
   cx: number,
   cy: number,
   waypoints: Waypoint[],
-  worldToCanvas: Coordinate["worldToCanvas"]
+  worldToCanvas: Coord["worldToCanvas"]
 ): Waypoint | null => {
   for (const p of waypoints) {
     const { x: px, y: py } = worldToCanvas(p.x, p.y);

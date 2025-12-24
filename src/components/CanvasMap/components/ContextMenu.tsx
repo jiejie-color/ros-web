@@ -4,6 +4,7 @@ import { hitTestWaypoint } from "../utils/hitTest";
 import type { Waypoint } from "../../../type";
 import type { SendMessage } from "react-use-websocket";
 import type { Coord } from "../hooks/usePanZoom";
+import { getMouseCanvasPos } from "../utils";
 interface Props {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   waypoints: Waypoint[];
@@ -19,7 +20,6 @@ export const ContextMenu = ({
   waypoints,
   coord,
   sendMessage,
-  // isSetWaypoint,
   waypointEditState,
   setEditingNode,
   setIsEditingNode,
@@ -41,10 +41,7 @@ export const ContextMenu = ({
 
     const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-
-      const rect = canvas.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
+      const { x: cx, y: cy } = getMouseCanvasPos(e, canvas);
       const { x: wx, y: wy } = coord.canvasToWorld(cx, cy);
 
       setContextMenu({
@@ -74,10 +71,7 @@ export const ContextMenu = ({
     if (!canvas) return;
 
     const move = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
-
+      const { x: cx, y: cy } = getMouseCanvasPos(e, canvas);
       const hit = hitTestWaypoint(cx, cy, waypoints, coord.worldToCanvas);
       if (waypointEditState === "drag") {
         if (hit) {

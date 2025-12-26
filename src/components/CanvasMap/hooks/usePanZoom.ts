@@ -154,12 +154,18 @@ export const usePanZoom = (
     const worldH = height * resolution;
 
     const s = Math.min(canvasW / worldW, canvasH / worldH) * 0.9;
-    setView({
-      scale: s,
-      offset: {
-        x: canvasW / 2 - (origin.position.x + worldW / 2) * s,
-        y: canvasH / 2 - (origin.position.y + worldH / 2) * s,
-      },
+    setView((pre) => {
+      if (pre.scale === 1) {
+        return {
+          scale: s,
+          offset: {
+            x: canvasW / 2 - (origin.position.x + worldW / 2) * s,
+            y: canvasH / 2 - (origin.position.y + worldH / 2) * s,
+          },
+        };
+      } else {
+        return pre;
+      }
     });
   }, [mapData, canvasRef]);
   return {

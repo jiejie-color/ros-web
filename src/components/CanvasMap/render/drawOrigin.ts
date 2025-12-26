@@ -1,8 +1,8 @@
-import type { Coordinate } from "../types";
+import type { Coord } from "../hooks/usePanZoom";
 
 export const drawOrigin = (
   ctx: CanvasRenderingContext2D,
-  worldToCanvas: Coordinate["worldToCanvas"]
+  worldToCanvas: Coord["worldToCanvas"]
 ) => {
   const { x, y } = worldToCanvas(0, 0);
   ctx.fillStyle = "blue";

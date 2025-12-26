@@ -1,10 +1,10 @@
 import type { MapMessage } from "../../../type";
-import type { Coordinate } from "../types";
+import type { Coord } from "../hooks/usePanZoom";
 
 export const drawGrid = (
   ctx: CanvasRenderingContext2D,
   mapData: MapMessage,
-  worldToCanvas: Coordinate["worldToCanvas"],
+  worldToCanvas: Coord["worldToCanvas"],
   scale: number,
   baseGridSize = 1
 ) => {

@@ -21,8 +21,8 @@ export const ContextMenu = ({
   coord,
   sendMessage,
   waypointEditState,
-  setEditingNode,
-  setIsEditingNode,
+  // setEditingNode,
+  // setIsEditingNode,
 }: Props) => {
   const [contextTarget, setContextTarget] = useState<ContextTarget>({
     type: "empty",
@@ -108,7 +108,7 @@ export const ContextMenu = ({
             fontSize: 14,
           }}
         >
-          {contextTarget.type === "empty" ? (
+          {/* {contextTarget.type === "empty" ? (
             <div
               style={{ padding: "8px 14px", cursor: "pointer" }}
               onClick={async () => {
@@ -124,7 +124,7 @@ export const ContextMenu = ({
             >
               ➕ 添加节点
             </div>
-          ) : null}
+          ) : null} */}
           {contextTarget.type === "waypoint" ? (
             <>
               <div

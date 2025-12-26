@@ -1,10 +1,10 @@
 import type { Waypoint } from "../../../type";
-import type { Coordinate } from "../types";
+import type { Coord } from "../hooks/usePanZoom";
 
 export const drawWaypoints = (
   ctx: CanvasRenderingContext2D,
   waypoints: Waypoint[],
-  worldToCanvas: Coordinate["worldToCanvas"]
+  worldToCanvas: Coord["worldToCanvas"]
 ) => {
   // 绘制 Waypoints
   waypoints.forEach((p) => {

@@ -16,6 +16,7 @@ export const Top = ({
           top: 10,
           textAlign: "center",
           width: "100%",
+          color: "white",
         }}
       >
         {navigationStatus

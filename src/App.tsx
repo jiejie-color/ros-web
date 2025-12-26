@@ -1,15 +1,17 @@
-import React, { useCallback, useState } from "react"; // 添加React和useState导入
+import React, { useState } from "react"; // 添加React和useState导入
 import useWebSocket from "react-use-websocket";
 import CanvasMap from "./components/CanvasMap/index.tsx";
-import { Children } from "./components/Children.tsx";
 import type { NavigationStatus, Waypoint } from "./type";
 import { Top } from "./components/Top/index.tsx";
 import { quaternionToYaw } from "./components/CanvasMap/utils/index.ts";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+// import { Cartographer_map } from "./pages/cartographer_map/index.tsx";
 
 function App() {
   // 矩形固定在世界坐标系
   const [mapData, setMapData] = useState(null); // 添加状态存储地图数据
+  const [cartographer_map, setCartographer_map] = useState(null); // 添加状态存储地图数据
+
   const [robot, setRobot] = useState({ x: 0, y: 0, yaw: 0 });
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [navigationStatus, setNavigationStatus] =
@@ -32,10 +34,13 @@ function App() {
             yaw: quaternionToYaw(q),
           });
         } else if (res.service === "/list_waypoints") {
-          setWaypoints(res.values.waypoints);
+          setWaypoints([]);
         } else if (res.topic === "/navigation_status") {
           // 处理导航状态主题
           setNavigationStatus(res.msg);
+        } else if (res.topic === "/cartographer_map") {
+          // 处理导航状态主题
+          setCartographer_map(res.msg);
         }
       } catch (e) {
         console.error("解析消息失败:", e);
@@ -57,10 +62,11 @@ function App() {
           service: "/list_waypoints",
         })
       );
+      sendMessage(
+        JSON.stringify({ op: "subscribe", topic: "/cartographer_map" })
+      );
     },
   });
-  const [count, setCount] = useState(0);
-
   return (
     <Router>
       <Routes>
@@ -85,12 +91,14 @@ function App() {
           }
         />
         <Route
-          path="/aaaa"
+          path="/cartographer_map"
           element={
-            <div>
-              {count}
-              <Children mySetCount={setCount}></Children>
-            </div>
+            <CanvasMap
+              robot={robot}
+              mapData={cartographer_map}
+              waypoints={waypoints}
+              sendMessage={sendMessage}
+            />
           }
         />
       </Routes>

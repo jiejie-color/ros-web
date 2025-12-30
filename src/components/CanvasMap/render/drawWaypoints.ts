@@ -4,7 +4,8 @@ import type { Coord } from "../hooks/usePanZoom";
 export const drawWaypoints = (
   ctx: CanvasRenderingContext2D,
   waypoints: Waypoint[],
-  worldToCanvas: Coord["worldToCanvas"]
+  worldToCanvas: Coord["worldToCanvas"],
+  mapRotation: number
 ) => {
   // 绘制 Waypoints
   waypoints.forEach((p) => {
@@ -16,9 +17,14 @@ export const drawWaypoints = (
     ctx.arc(cx, cy, 6, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.save();
+    ctx.translate(cx + 8, cy - 8);
+    ctx.rotate(-mapRotation);
+    ctx.translate(-(cx + 8), -(cy - 8));
     ctx.fillStyle = "#000";
     ctx.font = "12px sans-serif";
     ctx.fillText(p.name, cx + 8, cy - 8);
+    ctx.restore();
     ctx.restore();
   });
 };

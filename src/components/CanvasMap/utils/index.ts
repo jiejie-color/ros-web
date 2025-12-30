@@ -17,3 +17,22 @@ export const getMouseCanvasPos = (e: MouseEvent, canvas: HTMLCanvasElement) => {
     y: e.clientY - rect.top,
   };
 };
+
+// 添加触摸事件处理函数
+export const getTouchCanvasPos = (e: TouchEvent, canvas: HTMLCanvasElement) => {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  return {
+    x: touch.clientX - rect.left,
+    y: touch.clientY - rect.top,
+  };
+};
+
+// 从事件中获取客户端坐标（兼容鼠标和触摸事件）
+export const getClientPos = (e: MouseEvent | TouchEvent) => {
+  if (e instanceof TouchEvent) {
+    const touch = e.touches[0];
+    return { x: touch.clientX, y: touch.clientY };
+  }
+  return { x: e.clientX, y: e.clientY };
+};

@@ -1,29 +1,38 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapMessage, Waypoint } from "../../../type";
-import type { Offset, WaypointEditState } from "../types";
+import type { Offset, OperatingState } from "../types";
 import { getMouseCanvasPos } from "../utils";
+import type { SendMessage } from "react-use-websocket";
 
 export interface Coord {
   worldToCanvas: (wx: number, wy: number) => Offset;
   canvasToWorld: (cx: number, cy: number) => Offset;
 }
+export interface View {
+  scale: number;
+  offset: { x: number; y: number };
+}
 
 export const usePanZoom = (
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
-  waypointEditState: WaypointEditState,
-  setWaypointEditState: React.Dispatch<React.SetStateAction<WaypointEditState>>,
+  operatingState: OperatingState,
+  setOperatingState: React.Dispatch<React.SetStateAction<OperatingState>>,
   setEditingNode: React.Dispatch<React.SetStateAction<Waypoint | null>>,
   setIsEditingNode: React.Dispatch<React.SetStateAction<boolean>>,
-  mapData: MapMessage | null
+  mapData: MapMessage | null,
+  sendMessage: SendMessage,
+  editingNode: Waypoint | null,
+  setMapRotation: React.Dispatch<React.SetStateAction<number>>,
+  mapRotation: number
 ) => {
-  const [view, setView] = useState({
+  const [view, setView] = useState<View>({
     scale: 1,
     offset: { x: 0, y: 0 },
   });
 
   const isDragging = useRef(false);
+  const isRotating = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
-
   const coord = useMemo<Coord>(
     () => ({
       worldToCanvas: (wx: number, wy: number) => ({
@@ -61,41 +70,65 @@ export const usePanZoom = (
     return () => canvas.removeEventListener("wheel", onWheel);
   }, [canvasRef]);
 
-  // 鼠标拖拽 添加点位旋转箭头
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const down = useCallback(
+    (e: MouseEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    const down = (e: MouseEvent) => {
-      /** 设点位模式 */
-      setWaypointEditState((prev) => {
-        if (prev === "addPoint") {
-          const { x, y } = getMouseCanvasPos(e, canvas);
-          const { x: wx, y: wy } = coord.canvasToWorld(x, y);
-          // 第一次点击：确定位置
-          setEditingNode({
-            x: wx, // 世界坐标（米）
-            y: wy,
-            theta: 0, // 弧度
-            name: "",
-          });
-          return "rotating";
-        } else if (prev === "rotating") {
-          // 第二次点击：确认方向
-          setIsEditingNode(true);
-          return "drag";
-        } else {
-          /** 普通拖拽地图 */
-          isDragging.current = true;
-          lastMouse.current = { x: e.clientX, y: e.clientY };
-          return "drag";
-        }
-      });
-    };
-    const move = (e: MouseEvent) => {
-      const { x, y } = getMouseCanvasPos(e, canvas);
-      /** 旋转箭头 */
-      if (waypointEditState === "rotating") {
+      if (operatingState === "drag") {
+        isDragging.current = true;
+        lastMouse.current = { x: e.clientX, y: e.clientY };
+      } else if (
+        operatingState === "addPoint" ||
+        operatingState === "setInitialPose"
+      ) {
+        const { x, y } = getMouseCanvasPos(e, canvas!);
+        const { x: wx, y: wy } = coord.canvasToWorld(x, y);
+        // 第一次点击：确定位置
+        setEditingNode({
+          x: wx, // 世界坐标（米）
+          y: wy,
+          theta: 0, // 弧度
+          name: "",
+        });
+      } else if (operatingState === "rotate") {
+        isRotating.current = true;
+        const { x: mx, y: my } = getMouseCanvasPos(e, canvas);
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const dx = mx - centerX;
+        const dy = centerY - my;
+        lastMouse.current = { x: Math.atan2(dy, dx), y: 0 }; // 记录初始角度
+      }
+    },
+    [canvasRef, coord, operatingState, setEditingNode]
+  );
+  const move = useCallback(
+    (e: MouseEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const { x, y } = getMouseCanvasPos(e, canvas!);
+      if (operatingState === "drag") {
+        /** 拖地图 */
+        if (!isDragging.current) return;
+        const dx = e.clientX - lastMouse.current.x;
+        const dy = e.clientY - lastMouse.current.y;
+        // 根据 mapRotation 旋转拖拽向量
+        const cos = Math.cos(-mapRotation);
+        const sin = Math.sin(-mapRotation);
+        const dx_rot = dx * cos - dy * sin;
+        const dy_rot = dx * sin + dy * cos;
+        setView((v) => ({
+          ...v,
+          offset: { x: v.offset.x + dx_rot, y: v.offset.y + dy_rot },
+        }));
+        lastMouse.current = { x: e.clientX, y: e.clientY };
+      } else if (
+        operatingState === "addPoint" ||
+        operatingState === "setInitialPose"
+      ) {
+        isDragging.current = false;
+        /** 旋转箭头 */
         setEditingNode((node) => {
           if (!node) return null;
           const { x: cx, y: cy } = coord.worldToCanvas(node.x, node.y);
@@ -104,44 +137,73 @@ export const usePanZoom = (
           const theta = Math.atan2(dy, dx);
           return { ...node, theta };
         });
-      } else {
-        /** 拖地图 */
-        if (!isDragging.current) return;
-        const dx = e.clientX - lastMouse.current.x;
-        const dy = e.clientY - lastMouse.current.y;
-        setView((v) => ({
-          ...v,
-          offset: { x: v.offset.x + dx, y: v.offset.y + dy },
-        }));
-        lastMouse.current = { x: e.clientX, y: e.clientY };
+      } else if (operatingState === "rotate") {
+        /** 旋转地图 */
+        if (!isRotating.current) return;
+        const { x: mx, y: my } = getMouseCanvasPos(e, canvas);
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const dx = mx - centerX;
+        const dy = centerY - my;
+        const currentTheta = Math.atan2(dy, dx);
+        const deltaTheta = currentTheta - lastMouse.current.x;
+        setMapRotation((prev) => prev - deltaTheta);
+        lastMouse.current.x = currentTheta;
       }
-    };
-    const up = () => {
-      if (waypointEditState === "drag") {
-        isDragging.current = false;
-      }
-    };
+    },
+    [canvasRef, coord, operatingState, setEditingNode, setMapRotation, mapRotation]
+  );
+  const up = useCallback(() => {
+    if (operatingState === "drag") {
+      isDragging.current = false;
+    } else if (operatingState === "rotate") {
+      isRotating.current = false;
+    } else if (operatingState === "addPoint") {
+      // 第二次点击：确定方向，完成添加
+      setOperatingState("");
+      setIsEditingNode(true);
+    } else if (operatingState === "setInitialPose") {
+      // 第二次点击：确定方向，完成设置初始位置
+      setOperatingState("");
+      sendMessage(
+        JSON.stringify({
+          op: "call_service",
+          service: "/initial_pose_service",
+          args: {
+            x: editingNode!.x,
+            y: editingNode!.y,
+            z: 0,
+            roll: 0,
+            pitch: 0,
+            yaw: editingNode!.theta,
+          },
+        })
+      );
+      setEditingNode(null);
+    }
+  }, [
+    setOperatingState,
+    operatingState,
+    setIsEditingNode,
+    sendMessage,
+    editingNode,
+    setEditingNode,
+  ]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     canvas.addEventListener("mousedown", down);
     canvas.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-
+    canvas.addEventListener("mouseup", up);
     return () => {
       canvas.removeEventListener("mousedown", down);
       canvas.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
+      canvas.removeEventListener("mouseup", up);
     };
-  }, [
-    canvasRef,
-    coord,
-    setEditingNode,
-    setIsEditingNode,
-    setWaypointEditState,
-    waypointEditState,
-  ]);
+  }, [canvasRef, down, move, up]);
 
-  //地图 初始化 自适应 居中 放大
-  useEffect(() => {
+  const canvasInit = useCallback(() => {
     if (!mapData || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
@@ -152,24 +214,29 @@ export const usePanZoom = (
 
     const worldW = width * resolution;
     const worldH = height * resolution;
-
     const s = Math.min(canvasW / worldW, canvasH / worldH) * 0.9;
-    setView((pre) => {
-      if (pre.scale === 1) {
-        return {
-          scale: s,
-          offset: {
-            x: canvasW / 2 - (origin.position.x + worldW / 2) * s,
-            y: canvasH / 2 - (origin.position.y + worldH / 2) * s,
-          },
-        };
-      } else {
-        return pre;
-      }
+    setView(() => {
+      return {
+        scale: s,
+        offset: {
+          x: canvasW / 2 - (origin.position.x + worldW / 2) * s,
+          y: canvasH / 2 + (origin.position.y + worldH / 2) * s,
+        },
+      };
     });
   }, [mapData, canvasRef]);
+
+  //地图 初始化 自适应 居中 放大
+  useEffect(() => {
+    canvasInit();
+  }, [canvasInit]);
+  useEffect(() => {
+    window.addEventListener("resize", canvasInit);
+    return () => window.removeEventListener("resize", canvasInit);
+  }, [canvasInit]);
   return {
     coord,
     view,
+    setView,
   };
 };

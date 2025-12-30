@@ -3,7 +3,7 @@ import { useCanvasInit } from "../../components/CanvasMap/hooks/useCanvasInit";
 import { drawMap } from "../../components/CanvasMap/render/drawMap";
 import type { MapMessage, Waypoint } from "../../type";
 import { usePanZoom } from "../../components/CanvasMap/hooks/usePanZoom";
-import type { WaypointEditState } from "../../components/CanvasMap/types";
+import type { OperatingState } from "../../components/CanvasMap/types";
 
 export const Cartographer_map = (props: {
     cartographer_map: MapMessage | null;
@@ -11,14 +11,14 @@ export const Cartographer_map = (props: {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const { ctxRef } = useCanvasInit(canvasRef, containerRef);
-    const [waypointEditState, setWaypointEditState] = useState<WaypointEditState>("drag");
+    const [operatingState, setOperatingState] = useState<OperatingState>("drag");
     const [editingNode, setEditingNode] = useState<Waypoint | null>(null);
     const [, setIsEditingNode] = useState<boolean>(false);
 
     const { view, coord } = usePanZoom(
         canvasRef,
-        waypointEditState,
-        setWaypointEditState,
+        operatingState,
+        setOperatingState,
         setEditingNode,
         setIsEditingNode,
         props.cartographer_map

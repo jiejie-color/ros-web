@@ -19,6 +19,7 @@ export interface Waypoint {
   theta: number;
   name: string;
 }
+export type Mode = "navigation" | "mapping";
 export interface NavigationStatus {
   current_x: number;
   current_y: number;
@@ -29,4 +30,14 @@ export interface NavigationStatus {
   target_y: number;
   waypoint_id: number;
   waypoint_name: string;
+}
+export interface LaserScan {
+  header: { stamp: number };
+  angle_min: number;
+  angle_max: number;
+  angle_increment: number;
+  range_min: number;
+  range_max: number;
+  ranges: number[];
+  intensities?: number[];
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ContextTarget, WaypointEditState } from "../types";
+import type { ContextTarget, OperatingState } from "../types";
 import { hitTestWaypoint } from "../utils/hitTest";
 import type { Waypoint } from "../../../type";
 import type { SendMessage } from "react-use-websocket";
@@ -12,7 +12,7 @@ interface Props {
   setEditingNode: (node: Waypoint | null) => void;
   sendMessage: SendMessage;
   // isSetWaypoint: boolean;
-  waypointEditState: WaypointEditState;
+  operatingState: OperatingState;
   setIsEditingNode: (isEditing: boolean) => void;
 }
 export const ContextMenu = ({
@@ -20,7 +20,7 @@ export const ContextMenu = ({
   waypoints,
   coord,
   sendMessage,
-  waypointEditState,
+  operatingState,
   // setEditingNode,
   // setIsEditingNode,
 }: Props) => {
@@ -73,7 +73,7 @@ export const ContextMenu = ({
     const move = (e: MouseEvent) => {
       const { x: cx, y: cy } = getMouseCanvasPos(e, canvas);
       const hit = hitTestWaypoint(cx, cy, waypoints, coord.worldToCanvas);
-      if (waypointEditState === "drag") {
+      if (operatingState !== "addPoint" && operatingState !== "drag") {
         if (hit) {
           canvas.style.cursor = "pointer";
         } else {
@@ -90,7 +90,7 @@ export const ContextMenu = ({
 
     canvas.addEventListener("mousemove", move);
     return () => canvas.removeEventListener("mousemove", move);
-  }, [waypoints, canvasRef, coord, waypointEditState]);
+  }, [waypoints, canvasRef, coord, operatingState]);
 
   return (
     <>
@@ -129,7 +129,8 @@ export const ContextMenu = ({
             <>
               <div
                 style={{ padding: "8px 14px", cursor: "pointer" }}
-                onClick={async () => {
+                onClick={async (e) => {
+                  e.preventDefault();
                   sendMessage(
                     JSON.stringify({
                       op: "call_service",

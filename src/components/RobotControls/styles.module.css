@@ -1,0 +1,47 @@
+/* 添加摇杆样式 */
+.robot-controls {
+  display: block;
+  position: relative;
+  min-height: 100vh; /* 确保覆盖整个屏幕高度 */
+}
+.joysticks-wrapper {
+  position: fixed; /* 固定在屏幕底部 */
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between; /* 左右分布 */
+  padding: 0 20px; /* 左右边距 */
+  gap: 0;
+  margin: 0;
+}
+.joystick-container {
+  width: 150px; /* 手机端缩小摇杆尺寸 */
+  height: 150px;
+  background: rgb(16 16 16 / 80%);
+  border-radius: 50%;
+  position: relative;
+}
+.joystick-handle {
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(
+    circle at 65% 35%,
+    #999,
+    #444
+  ); /* 调整渐变颜色更柔和 */
+  border-radius: 50%;
+  position: absolute;
+  /* 移除初始transform，改用left/top定位（避免与动态设置的transform冲突） */
+  top: calc(50% - 30px); /* 60px高度的一半 */
+  left: calc(50% - 30px); /* 60px宽度的一半 */
+  transition: all 0.1s ease-out; /* 改为all过渡，包含位置和可能的缩放 */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); /* 调整阴影更轻薄 */
+  cursor: pointer;
+}
+.joystick-handle:active {
+  transform: scale(0.95); /* 添加按下时的微缩反馈 */
+}
+.joystick-handle:active {
+  transform: scale(0.95); /* 添加按下时的微缩反馈 */
+}

@@ -1,12 +1,11 @@
-import type { SendMessage } from "react-use-websocket";
-import type { NavigationStatus } from "../../type";
+import type { MySendMessage, NavigationStatus } from "../../type";
 
 export const Top = ({
   navigationStatus,
   sendMessage,
 }: {
   navigationStatus: NavigationStatus | null;
-  sendMessage: SendMessage;
+  sendMessage: MySendMessage;
 }) => {
   return (
     <>
@@ -27,7 +26,7 @@ export const Top = ({
             style={{ marginLeft: 10 }}
             onClick={() => {
               sendMessage(
-                JSON.stringify({
+                ({
                   op: "call_service",
                   service: "/pause_navigation",
                   id: "pause_navigation",

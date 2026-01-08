@@ -1,10 +1,9 @@
-import type { SendMessage } from "react-use-websocket";
-import type { Waypoint } from "../../../type";
+import type { MySendMessage, Waypoint } from "../../../type";
 
 interface Props {
   editingNode: Waypoint;
   setEditingNode: React.Dispatch<React.SetStateAction<Waypoint | null>>;
-  sendMessage: SendMessage;
+  sendMessage: MySendMessage;
   setIsEditingNode: React.Dispatch<React.SetStateAction<boolean>>;
 }
 export const WaypointEditor = ({
@@ -21,7 +20,7 @@ export const WaypointEditor = ({
 
   const submit = () => {
     sendMessage(
-      JSON.stringify({
+      ({
         op: "call_service",
         id: `create_waypoint_${Date.now()}`,
         service: "/create_waypoint",
@@ -36,7 +35,7 @@ export const WaypointEditor = ({
       })
     );
     sendMessage(
-      JSON.stringify({
+      ({
         op: "call_service",
         id: `create_waypoint_${Date.now() + 1}`,
         service: "/list_waypoints",

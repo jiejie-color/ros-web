@@ -6,14 +6,25 @@ import { drawMap } from "./render/drawMap";
 import { drawRobot } from "./render/drawRobot";
 // import { drawGrid } from "./render/drawGrid";
 import { drawWaypoints } from "./render/drawWaypoints";
+import { drawPath } from "./render/drawPath"; // 导入路径绘制函数
 import { ContextMenu } from "./components/ContextMenu";
 import type { Mode, Waypoint } from "../../type";
 import { Bottom } from "../Bottom";
 import { WaypointEditor } from "./components/WaypointEditor";
 import { drawArrow } from "./render/drawArrow";
 import { drawLaserScan } from "./render/drawLaserScan";
+import { RobotControls } from "../RobotControls";
+import { drawFreePoints } from "./render/drawFreePoints";
 
-const CanvasMap = (props: CanvasMapProps) => {
+const CanvasMap = ({
+  sendMessage,
+  mapData,
+  projected_map,
+  robot,
+  laserScan,
+  waypoints,
+  pathPlan, // 接收路径规划数据
+}: CanvasMapProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [operatingState, setOperatingState] =
@@ -23,43 +34,54 @@ const CanvasMap = (props: CanvasMapProps) => {
   const [mode, setMode] = useState<Mode>("navigation");
   const [mapRotation, setMapRotation] = useState<number>(0);
   const [isLaser, setIsLaser] = useState<boolean>(false);
+  const [isPlan, setIsPlan] = useState<boolean>(false);
+  const [isRobotControls, setIsRobotControls] = useState<boolean>(false);
+  const [freePoints, setFreePoints] = useState<{ x: number; y: number }[]>([]);
+
+
   const { view, coord } = usePanZoom(
     canvasRef,
     operatingState,
     setOperatingState,
     setEditingNode,
     setIsEditingNode,
-    props.mapData,
-    props.sendMessage,
+    mapData,
+    sendMessage,
     editingNode,
     setMapRotation,
-    mapRotation
+    mapRotation,
+    setFreePoints,
+    freePoints,
   );
   const { ctxRef } = useCanvasInit(canvasRef, containerRef,);
   useEffect(() => {
     const ctx = ctxRef.current;
-    if (!ctx || !props.mapData) return;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    if (!ctx) return;
+    ctx.clearRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight);
 
     ctx.save();
-    ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
+    ctx.translate(ctx.canvas.clientWidth / 2, ctx.canvas.clientHeight / 2);
     ctx.rotate(mapRotation);
-    ctx.translate(-ctx.canvas.width / 2, -ctx.canvas.height / 2);
+    ctx.translate(-ctx.canvas.clientWidth / 2, -ctx.canvas.clientHeight / 2);
 
-    drawMap(ctx, props.mapData, coord.worldToCanvas, view.scale,);
-    drawRobot(ctx, props.robot, coord.worldToCanvas, view.scale);
-    if (props.laserScan && isLaser) {
-      drawLaserScan(ctx, props.laserScan, coord.worldToCanvas, props.robot);
+    drawMap(ctx, mode === "navigation" ? mapData : projected_map, coord.worldToCanvas, view.scale,);
+    drawRobot(ctx, robot, coord.worldToCanvas, view.scale);
+    if (laserScan && isLaser) {
+      drawLaserScan(ctx, laserScan, coord.worldToCanvas, robot);
     }
     if (mode === "navigation") {
-      drawWaypoints(ctx, props.waypoints, coord.worldToCanvas, mapRotation);
+      drawWaypoints(ctx, waypoints, coord.worldToCanvas, mapRotation);
+      drawPath(ctx, pathPlan, coord.worldToCanvas); // 绘制路径规划
       if (operatingState === "addPoint" || operatingState === "setInitialPose") {
         drawArrow(ctx, editingNode, coord);
+      }
+      if (operatingState === "freeErase") {
+        drawFreePoints(ctx, freePoints);
       }
     }
 
     ctx.restore();
-  }, [props, view, ctxRef, coord, editingNode, operatingState, mode, mapRotation, isLaser]);
+  }, [mapData, projected_map, robot, laserScan, waypoints, pathPlan, view, ctxRef, coord, editingNode, operatingState, mode, mapRotation, isLaser, freePoints]);
 
   return (
     <>
@@ -68,10 +90,10 @@ const CanvasMap = (props: CanvasMapProps) => {
       </div>
       <ContextMenu
         canvasRef={canvasRef}
-        waypoints={props.waypoints}
+        waypoints={waypoints}
         coord={coord}
         setEditingNode={setEditingNode}
-        sendMessage={props.sendMessage}
+        sendMessage={sendMessage}
         operatingState={operatingState}
         setIsEditingNode={setIsEditingNode}
       ></ContextMenu>
@@ -79,7 +101,7 @@ const CanvasMap = (props: CanvasMapProps) => {
         <WaypointEditor
           editingNode={editingNode!}
           setEditingNode={setEditingNode}
-          sendMessage={props.sendMessage}
+          sendMessage={sendMessage}
           setIsEditingNode={setIsEditingNode}
         ></WaypointEditor>
       ) : null}
@@ -91,7 +113,14 @@ const CanvasMap = (props: CanvasMapProps) => {
         setMode={setMode}
         setIsLaser={setIsLaser}
         isLaser={isLaser}
+        sendMessage={sendMessage}
+        isPlan={isPlan}
+        setIsPlan={setIsPlan}
+        isRobotControls={isRobotControls}
+        setIsRobotControls={setIsRobotControls}
       ></Bottom>
+      {isRobotControls ? <RobotControls></RobotControls> : null}
+      
     </>
   );
 };

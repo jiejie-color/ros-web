@@ -3,12 +3,12 @@ import type { Coord } from "../hooks/usePanZoom";
 
 export const drawMap = (
   ctx: CanvasRenderingContext2D,
-  mapData: MapMessage,
+  mapData: MapMessage | null,
   worldToCanvas: Coord["worldToCanvas"],
   scale: number
 ) => {
   if (!mapData) return;
-  
+
   ctx.fillStyle = "#303030";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 

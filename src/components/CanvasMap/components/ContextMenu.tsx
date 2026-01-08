@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ContextTarget, OperatingState } from "../types";
 import { hitTestWaypoint } from "../utils/hitTest";
-import type { Waypoint } from "../../../type";
-import type { SendMessage } from "react-use-websocket";
+import type { MySendMessage, Waypoint } from "../../../type";
 import type { Coord } from "../hooks/usePanZoom";
 import { getMouseCanvasPos } from "../utils";
 interface Props {
@@ -10,7 +9,7 @@ interface Props {
   waypoints: Waypoint[];
   coord: Coord;
   setEditingNode: (node: Waypoint | null) => void;
-  sendMessage: SendMessage;
+  sendMessage: MySendMessage;
   // isSetWaypoint: boolean;
   operatingState: OperatingState;
   setIsEditingNode: (isEditing: boolean) => void;
@@ -132,7 +131,7 @@ export const ContextMenu = ({
                 onClick={async (e) => {
                   e.preventDefault();
                   sendMessage(
-                    JSON.stringify({
+                    ({
                       op: "call_service",
                       id: `call_multi_navigate_${Date.now()}`,
                       service: "/multi_navigate",
@@ -149,7 +148,7 @@ export const ContextMenu = ({
                 style={{ padding: "8px 14px", cursor: "pointer" }}
                 onClick={async () => {
                   sendMessage(
-                    JSON.stringify({
+                    ({
                       op: "call_service",
                       id: `call_delete_waypoint_${Date.now()}`,
                       service: "/delete_waypoint",
@@ -159,7 +158,7 @@ export const ContextMenu = ({
                     })
                   );
                   sendMessage(
-                    JSON.stringify({
+                    ({
                       op: "call_service",
                       id: `create_waypoint_${Date.now() + 1}`,
                       service: "/list_waypoints",

@@ -9,22 +9,23 @@ export function quaternionToYaw(q: {
     1 - 2 * (q.y * q.y + q.z * q.z)
   );
 }
-
 export const getMouseCanvasPos = (e: MouseEvent, canvas: HTMLCanvasElement) => {
   const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
   return {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top,
+    x: (e.clientX - rect.left) * dpr, // 转换为实际像素坐标
+    y: (e.clientY - rect.top) * dpr, // 转换为实际像素坐标
   };
 };
 
 // 添加触摸事件处理函数
 export const getTouchCanvasPos = (e: TouchEvent, canvas: HTMLCanvasElement) => {
   const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
   const touch = e.touches[0];
   return {
-    x: touch.clientX - rect.left,
-    y: touch.clientY - rect.top,
+    x: (touch.clientX - rect.left) * dpr, // 转换为实际像素坐标
+    y: (touch.clientY - rect.top) * dpr, // 转换为实际像素坐标
   };
 };
 

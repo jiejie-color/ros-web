@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MapMessage, Waypoint } from "../../../type";
+import type { MapMessage, MySendMessage, Waypoint } from "../../../type";
 import type { Offset, OperatingState } from "../types";
-import { getMouseCanvasPos } from "../utils";
-import type { SendMessage } from "react-use-websocket";
+import { getMouseCanvasPos, getTouchCanvasPos, getClientPos } from "../utils";
 
 export interface Coord {
   worldToCanvas: (wx: number, wy: number) => Offset;
@@ -20,15 +19,19 @@ export const usePanZoom = (
   setEditingNode: React.Dispatch<React.SetStateAction<Waypoint | null>>,
   setIsEditingNode: React.Dispatch<React.SetStateAction<boolean>>,
   mapData: MapMessage | null,
-  sendMessage: SendMessage,
+  sendMessage: MySendMessage,
   editingNode: Waypoint | null,
   setMapRotation: React.Dispatch<React.SetStateAction<number>>,
-  mapRotation: number
+  mapRotation: number,
+  setFreePoints: React.Dispatch<React.SetStateAction<{ x: number; y: number }[]>>,
+  freePoints: { x: number; y: number }[]
 ) => {
   const [view, setView] = useState<View>({
     scale: 1,
     offset: { x: 0, y: 0 },
   });
+  // const setFreePoints = useRef<{ x: number; y: number }[]>([]);
+  const isFreeDrawing = useRef(false);
 
   const isDragging = useRef(false);
   const isRotating = useRef(false);
@@ -71,18 +74,29 @@ export const usePanZoom = (
   }, [canvasRef]);
 
   const down = useCallback(
-    (e: MouseEvent) => {
+    (e: MouseEvent | TouchEvent) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      if (e instanceof TouchEvent) {
+        e.preventDefault();
+      }
+
       if (operatingState === "drag") {
         isDragging.current = true;
-        lastMouse.current = { x: e.clientX, y: e.clientY };
+        const { x, y } = getClientPos(e);
+        lastMouse.current = { x, y };
       } else if (
         operatingState === "addPoint" ||
         operatingState === "setInitialPose"
       ) {
-        const { x, y } = getMouseCanvasPos(e, canvas!);
+        let pos;
+        if (e instanceof TouchEvent) {
+          pos = getTouchCanvasPos(e, canvas!);
+        } else {
+          pos = getMouseCanvasPos(e, canvas!);
+        }
+        const { x, y } = pos;
         const { x: wx, y: wy } = coord.canvasToWorld(x, y);
         // 第一次点击：确定位置
         setEditingNode({
@@ -93,26 +107,54 @@ export const usePanZoom = (
         });
       } else if (operatingState === "rotate") {
         isRotating.current = true;
-        const { x: mx, y: my } = getMouseCanvasPos(e, canvas);
+        let pos;
+        if (e instanceof TouchEvent) {
+          pos = getTouchCanvasPos(e, canvas);
+        } else {
+          pos = getMouseCanvasPos(e, canvas);
+        }
+        const { x: mx, y: my } = pos;
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const dx = mx - centerX;
         const dy = centerY - my;
         lastMouse.current = { x: Math.atan2(dy, dx), y: 0 }; // 记录初始角度
+      } else if (operatingState === "freeErase") {
+        let pos;
+        if (e instanceof TouchEvent) {
+          pos = getTouchCanvasPos(e, canvas!);
+        } else {
+          pos = getMouseCanvasPos(e, canvas!);
+        }
+        setFreePoints([pos]);
+        isFreeDrawing.current = true;
       }
     },
-    [canvasRef, coord, operatingState, setEditingNode]
+    [canvasRef, coord, setFreePoints, operatingState, setEditingNode]
   );
   const move = useCallback(
-    (e: MouseEvent) => {
+    (e: MouseEvent | TouchEvent) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const { x, y } = getMouseCanvasPos(e, canvas!);
+
+      if (e instanceof TouchEvent) {
+        e.preventDefault();
+      }
+
+      let pos;
+      if (e instanceof TouchEvent) {
+        pos = getTouchCanvasPos(e, canvas!);
+      } else {
+        pos = getMouseCanvasPos(e, canvas!);
+      }
+      const { x, y } = pos;
+
       if (operatingState === "drag") {
         /** 拖地图 */
         if (!isDragging.current) return;
-        const dx = e.clientX - lastMouse.current.x;
-        const dy = e.clientY - lastMouse.current.y;
+        const { x: currentX, y: currentY } = getClientPos(e);
+        const dx = currentX - lastMouse.current.x;
+        const dy = currentY - lastMouse.current.y;
         // 根据 mapRotation 旋转拖拽向量
         const cos = Math.cos(-mapRotation);
         const sin = Math.sin(-mapRotation);
@@ -122,7 +164,7 @@ export const usePanZoom = (
           ...v,
           offset: { x: v.offset.x + dx_rot, y: v.offset.y + dy_rot },
         }));
-        lastMouse.current = { x: e.clientX, y: e.clientY };
+        lastMouse.current = { x: currentX, y: currentY };
       } else if (
         operatingState === "addPoint" ||
         operatingState === "setInitialPose"
@@ -140,7 +182,8 @@ export const usePanZoom = (
       } else if (operatingState === "rotate") {
         /** 旋转地图 */
         if (!isRotating.current) return;
-        const { x: mx, y: my } = getMouseCanvasPos(e, canvas);
+
+        const { x: mx, y: my } = pos;
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const dx = mx - centerX;
@@ -149,24 +192,93 @@ export const usePanZoom = (
         const deltaTheta = currentTheta - lastMouse.current.x;
         setMapRotation((prev) => prev - deltaTheta);
         lastMouse.current.x = currentTheta;
+      } else if (operatingState === "freeErase") {
+        if (!isFreeDrawing.current) return;
+
+        setFreePoints((prev) => [...prev, { x, y }]);
       }
     },
-    [canvasRef, coord, operatingState, setEditingNode, setMapRotation, mapRotation]
+    [canvasRef, operatingState, mapRotation, setEditingNode, coord, setMapRotation, setFreePoints]
   );
-  const up = useCallback(() => {
-    if (operatingState === "drag") {
-      isDragging.current = false;
-    } else if (operatingState === "rotate") {
-      isRotating.current = false;
-    } else if (operatingState === "addPoint") {
-      // 第二次点击：确定方向，完成添加
-      setOperatingState("");
-      setIsEditingNode(true);
-    } else if (operatingState === "setInitialPose") {
-      // 第二次点击：确定方向，完成设置初始位置
-      setOperatingState("");
-      sendMessage(
-        JSON.stringify({
+  const worldToMapIndex = useCallback((wx: number, wy: number) => {
+    const { resolution, origin, width, height } = mapData!.info;
+
+    const mx = Math.floor((wx - origin.position.x) / resolution);
+    const my = Math.floor((wy - origin.position.y) / resolution);
+
+    if (mx < 0 || my < 0 || mx >= width || my >= height) return -1;
+
+    return my * width + mx;
+  }, [mapData]);
+  const finalizeFreeErase = useCallback((canvas: HTMLCanvasElement) => {
+    const polygon = freePoints;
+    if (polygon.length < 3) return;
+
+    // 1️⃣ 创建 mask canvas
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = canvas.width;
+    maskCanvas.height = canvas.height;
+    const mctx = maskCanvas.getContext("2d")!;
+
+    mctx.fillStyle = "white";
+    mctx.beginPath();
+    mctx.moveTo(polygon[0].x, polygon[0].y);
+    polygon.forEach(p => mctx.lineTo(p.x, p.y));
+    mctx.closePath();
+    mctx.fill();
+
+    // 2️⃣ 获取像素
+    const img = mctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+
+    const indices: number[] = [];
+
+    for (let y = 0; y < img.height; y++) {
+      for (let x = 0; x < img.width; x++) {
+        const i = (y * img.width + x) * 4;
+        if (img.data[i] === 255) {
+          // 3️⃣ canvas → world
+          const { x: wx, y: wy } = coord.canvasToWorld(x, y);
+
+          // 4️⃣ world → map index
+          const idx = worldToMapIndex(wx, wy);
+          if (idx! >= 0) indices.push(idx!);
+        }
+      }
+    }
+    const sendEraseToROS = (indices: number[]) => {
+      sendMessage({
+        op: "call_service",
+        topic: "/web_map_erase",
+        args: { data: indices }
+      });
+    };
+    if (window.confirm(`你确定要擦除 ${indices.length} 个栅格吗？`)) {
+      sendEraseToROS(indices);
+    } else {
+      setFreePoints([]);
+      console.log(indices)
+    }
+
+    // sendEraseToROS(indices);
+  }, [coord, freePoints, sendMessage, setFreePoints, worldToMapIndex]);
+  const up = useCallback(
+    (e: MouseEvent | TouchEvent) => {
+      if (e instanceof TouchEvent) {
+        e.preventDefault();
+      }
+
+      if (operatingState === "drag") {
+        isDragging.current = false;
+      } else if (operatingState === "rotate") {
+        isRotating.current = false;
+      } else if (operatingState === "addPoint") {
+        // 第二次点击：确定方向，完成添加
+        setOperatingState("");
+        setIsEditingNode(true);
+      } else if (operatingState === "setInitialPose") {
+        // 第二次点击：确定方向，完成设置初始位置
+        setOperatingState("");
+        sendMessage({
           op: "call_service",
           service: "/initial_pose_service",
           args: {
@@ -177,29 +289,45 @@ export const usePanZoom = (
             pitch: 0,
             yaw: editingNode!.theta,
           },
-        })
-      );
-      setEditingNode(null);
-    }
-  }, [
-    setOperatingState,
-    operatingState,
-    setIsEditingNode,
-    sendMessage,
-    editingNode,
-    setEditingNode,
-  ]);
+        });
+        setEditingNode(null);
+      } else if (operatingState === "freeErase") {
+        isFreeDrawing.current = false;
+        finalizeFreeErase(canvasRef.current!);
+      }
+
+    },
+    [operatingState, setOperatingState, setIsEditingNode, sendMessage, editingNode, setEditingNode, canvasRef, finalizeFreeErase]
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    // 添加鼠标事件监听器
     canvas.addEventListener("mousedown", down);
     canvas.addEventListener("mousemove", move);
     canvas.addEventListener("mouseup", up);
+    canvas.addEventListener("mouseleave", up);
+
+    // 添加触摸事件监听器
+    canvas.addEventListener("touchstart", down, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", up, { passive: false });
+    canvas.addEventListener("touchcancel", up, { passive: false });
+
     return () => {
+      // 移除鼠标事件监听器
       canvas.removeEventListener("mousedown", down);
       canvas.removeEventListener("mousemove", move);
       canvas.removeEventListener("mouseup", up);
+      canvas.removeEventListener("mouseleave", up);
+
+      // 移除触摸事件监听器
+      canvas.removeEventListener("touchstart", down);
+      canvas.removeEventListener("touchmove", move);
+      canvas.removeEventListener("touchend", up);
+      canvas.removeEventListener("touchcancel", up);
     };
   }, [canvasRef, down, move, up]);
 

@@ -1,14 +1,14 @@
-import type { SendMessage } from "react-use-websocket";
-import type { MapMessage, Robot, Waypoint, LaserScan } from "../../type";
+import type { MapMessage, Robot, Waypoint, LaserScan, MySendMessage, PathPlan } from "../../type";
 
 export interface CanvasMapProps {
   mapData: MapMessage | null;
-  cartographer_map: MapMessage | null;
+  projected_map: MapMessage | null;
   robot: Robot;
   baseGridSize?: number;
-  sendMessage: SendMessage;
+  sendMessage: MySendMessage;
   waypoints: Waypoint[];
   laserScan: LaserScan | null;
+  pathPlan: PathPlan | null; // 新增路径规划属性
 }
 export interface Offset {
   x: number;
@@ -24,4 +24,5 @@ export type OperatingState =
   | "drag"
   | "rotate"
   | "addPoint"
-  | "setInitialPose"; // 拖动确定朝向
+  | "setInitialPose" // 拖动确定朝向
+  | "freeErase"; 

@@ -11,21 +11,19 @@ export function quaternionToYaw(q: {
 }
 export const getMouseCanvasPos = (e: MouseEvent, canvas: HTMLCanvasElement) => {
   const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
   return {
-    x: (e.clientX - rect.left) * dpr, // 转换为实际像素坐标
-    y: (e.clientY - rect.top) * dpr, // 转换为实际像素坐标
+    x: e.clientX - rect.left, // CSS 像素坐标
+    y: e.clientY - rect.top, // CSS 像素坐标
   };
 };
 
 // 添加触摸事件处理函数
 export const getTouchCanvasPos = (e: TouchEvent, canvas: HTMLCanvasElement) => {
   const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
   const touch = e.touches[0];
   return {
-    x: (touch.clientX - rect.left) * dpr, // 转换为实际像素坐标
-    y: (touch.clientY - rect.top) * dpr, // 转换为实际像素坐标
+    x: touch.clientX - rect.left, // CSS 像素坐标
+    y: touch.clientY - rect.top, // CSS 像素坐标
   };
 };
 

@@ -119,9 +119,12 @@ export const Bottom = ({
                   id: "control_launch"
                 })
               )
-              sendMessage(
-                { op: "subscribe", topic: "/projected_map" }
-              );
+              setTimeout(() => {
+                sendMessage(
+                  { op: "subscribe", topic: "/projected_map", id: "projected_map" }
+                );
+              }, 3000);
+
               setMode("mapping");
             }}
           >
@@ -208,6 +211,29 @@ export const Bottom = ({
           >
             {operatingState === "freeErase" ? "取消编辑地图" : "编辑地图"}
           </button>
+          <button
+            style={{ padding: 12, marginRight: 20 }}
+            onClick={() => {
+              // setIsRobotControls((prev) => !prev);
+              if (window.confirm(`确定要重启机器人吗？`)) {
+                sendMessage(
+                  ({
+                    op: "call_service",
+                    service: "/control_launch",
+                    args: {
+                      launch_type: "car_vel",
+                      action: "restart",
+                      package_name: "car_vel"
+                    },
+                    id: "control_launch"
+                  })
+                )
+              }
+
+            }}
+          >
+            {"重启"}
+          </button>
         </>
           :
           <>
@@ -216,7 +242,7 @@ export const Bottom = ({
               onClick={() => {
                 setMode("navigation");
                 sendMessage(
-                  ({
+                  {
                     op: "call_service",
                     service: "/control_launch",
                     id: "map_save_service",
@@ -225,8 +251,11 @@ export const Bottom = ({
                       action: "stop",
                       package_name: "car_vel"
                     },
-                  })
+                  }
                 )
+                sendMessage(
+                  { op: "unsubscribe", topic: "/projected_map", id: "projected_map" }
+                );
               }}
             >
               {"导航模式"}
@@ -234,52 +263,39 @@ export const Bottom = ({
             <button
               style={{ padding: 12, marginLeft: 20 }}
               onClick={() => {
-                sendMessage(
-                  ({
-                    op: "call_service",
-                    service: "/map_save_service",
-                    id: "map_save_service",
-                    args: {},
-                  })
-                )
-                sendMessage(
-                  ({
-                    op: "call_service",
-                    service: "/control_launch",
-                    args: {
-                      launch_type: "mapping",
-                      action: "stop",
-                      package_name: "car_vel"
-                    },
-                  })
-                )
-                sendMessage(
-                  ({
-                    op: "call_service",
-                    service: "/control_launch",
-                    args: {
-                      launch_type: "car_vel",
-                      action: "start",
-                      package_name: "car_vel"
-                    },
-                  })
-                )
-                sendMessage(
-                  ({
-                    op: "call_service",
-                    service: "/control_launch",
-                    args: {
-                      launch_type: "car_vel",
-                      action: "stop",
-                      package_name: "car_vel"
-                    },
-                  })
-                )
-                setMode("navigation");
+                const mapName = prompt("请输入地图名称:", "地图_" + new Date().toISOString().slice(0, 10));
+                if (mapName !== null) {
+                  sendMessage(
+                    { op: "unsubscribe", topic: "/projected_map", id: "projected_map" }
+                  );
+                  sendMessage(
+                    ({
+                      op: "call_service",
+                      service: "/map_save_service",
+                      id: "map_save_service",
+                      args: {
+                        map_name: mapName
+                      },
+                    })
+                  )
+                  sendMessage(
+                    {
+                      op: "call_service",
+                      service: "/control_launch",
+                      args: {
+                        launch_type: "mapping",
+                        action: "stop",
+                        package_name: "car_vel"
+                      },
+                    }
+                  )
+                  setMode("navigation");
+                }
               }}
             >
               保存
             </button>
+
           </>}
 
       </div >

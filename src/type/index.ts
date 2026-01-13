@@ -81,3 +81,7 @@ export interface SendMessageParams {
   args?: Record<string, unknown>;
   throttle_rate?: number;
 }
+export interface LaunchStatus {
+  "mapping_running": boolean,
+  "navigation_running": boolean,
+}

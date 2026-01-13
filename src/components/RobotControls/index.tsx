@@ -2,14 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import useWebSocket from "react-use-websocket";
 import styles from "./styles.module.css";
 
-/* ================= 工具函数 ================= */
-
-const clamp = (v: number, min: number, max: number) =>
-    Math.min(Math.max(v, min), max);
+interface RobotControlsProps {
+    robotWsUrl?: string; // 允许传入WebSocket URL
+}
 
 /* ================= 主组件 ================= */
 
-export const RobotControls = () => {
+export const RobotControls = ({ robotWsUrl = "ws://192.168.0.155:8765" }: RobotControlsProps) => {
     /* ---------- UI 状态（低频） ---------- */
     const [status, setStatus] = useState("正在连接...");
     const [statusColor, setStatusColor] = useState("orange");
@@ -32,7 +31,7 @@ export const RobotControls = () => {
 
     /* ================= WebSocket ================= */
 
-    const { sendMessage } = useWebSocket("ws://192.168.0.155:8765", {
+    const { sendMessage } = useWebSocket(robotWsUrl, {
         onOpen: () => {
             setStatus("WebSocket 连接成功");
             setStatusColor("green");
@@ -52,11 +51,18 @@ export const RobotControls = () => {
 
     const sendControlCommand = useCallback(() => {
         const now = Date.now();
-        if (now - lastSendTimeRef.current < throttleDelay) return;
-
-        sendMessage(JSON.stringify(controlRef.current));
-        lastSendTimeRef.current = now;
+        if (now - lastSendTimeRef.current >= throttleDelay) {
+            sendMessage(
+                JSON.stringify(controlRef.current)
+            );
+            lastSendTimeRef.current = now;
+        }
     }, [sendMessage]);
+
+    // 限制数值范围
+    function clamp(value: number, min: number, max: number) {
+        return Math.min(Math.max(value, min), max);
+    }
 
     /* ================= 游戏手柄 ================= */
 
@@ -163,60 +169,119 @@ export const RobotControls = () => {
         }, [ref, type]);
     };
 
+    // 初始化两个摇杆
     useJoystick(speedJoystickRef, "move");
     useJoystick(directionJoystickRef, "rotate");
 
-    /* ================= UI ================= */
-
     return (
-        <div className={styles["robot-controls"]}>
-            <div
-                style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    padding: "10px",
-                    textAlign: "center",
-                    color: statusColor,
-                    background: "rgba(0,0,0,0.1)",
-                }}
-            >
-                {status}
+        <div
+            style={{
+                position: "fixed",
+                bottom: 100,
+                left: 20,
+                background: "#2a2a2a",
+                padding: "16px",
+                borderRadius: 8,
+                color: "white",
+                zIndex: 1000,
+                minWidth: 300,
+            }}
+        >
+            <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontSize: 14 }}>
+                    遥控状态: <span style={{ color: statusColor }}>{status}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                    <span style={{ marginRight: 8 }}>最大速度:</span>
+                    <input
+                        type="range"
+                        min="50"
+                        max="500"
+                        value={maxSpeed}
+                        onChange={(e) => setMaxSpeed(parseInt(e.target.value))}
+                        style={{ flex: 1 }}
+                    />
+                    <span style={{ marginLeft: 8, minWidth: 40 }}>{maxSpeed}</span>
+                </div>
             </div>
 
-            <div
-                style={{
-                    position: "fixed",
-                    top: 50,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                }}
-            >
-                <label>最大速度：</label>
-                <input
-                    type="range"
-                    min={0}
-                    max={500}
-                    value={maxSpeed}
-                    onChange={(e) => setMaxSpeed(Number(e.target.value))}
-                />
-                <span>{maxSpeed}</span>
-            </div>
-
-            <div className={styles["joysticks-wrapper"]}>
+            <div style={{ display: "flex", gap: 16 }}>
+                {/* 速度摇杆 */}
                 <div
                     ref={speedJoystickRef}
-                    className={styles["joystick-container"]}
+                    className={styles.joystick}
+                    style={{
+                        width: 160,
+                        height: 160,
+                        background: "rgba(255,255,255,0.1)",
+                        borderRadius: "50%",
+                        position: "relative",
+                        touchAction: "none",
+                    }}
                 >
-                    <div className={styles["joystick-handle"]} />
+                    <div
+                        className={styles["joystick-handle"]}
+                        style={{
+                            width: 40,
+                            height: 40,
+                            background: "#007bff",
+                            borderRadius: "50%",
+                            position: "absolute",
+                            top: "calc(50% - 20px)",
+                            left: "calc(50% - 20px)",
+                            transition: "transform 0.1s",
+                            cursor: "grab",
+                        }}
+                    />
+                    <div style={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        fontSize: 12,
+                        color: "#aaa"
+                    }}>
+                        移动
+                    </div>
                 </div>
 
+                {/* 方向往摇杆 */}
                 <div
                     ref={directionJoystickRef}
-                    className={styles["joystick-container"]}
+                    className={styles.joystick}
+                    style={{
+                        width: 160,
+                        height: 160,
+                        background: "rgba(255,255,255,0.1)",
+                        borderRadius: "50%",
+                        position: "relative",
+                        touchAction: "none",
+                    }}
                 >
-                    <div className={styles["joystick-handle"]} />
+                    <div
+                        className={styles["joystick-handle"]}
+                        style={{
+                            width: 40,
+                            height: 40,
+                            background: "#28a745",
+                            borderRadius: "50%",
+                            position: "absolute",
+                            top: "calc(50% - 20px)",
+                            left: "calc(50% - 20px)",
+                            transition: "transform 0.1s",
+                            cursor: "grab",
+                        }}
+                    />
+                    <div style={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        fontSize: 12,
+                        color: "#aaa"
+                    }}>
+                        旋转
+                    </div>
                 </div>
             </div>
         </div>

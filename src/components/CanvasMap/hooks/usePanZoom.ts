@@ -36,19 +36,46 @@ export const usePanZoom = (
   const isDragging = useRef(false);
   const isRotating = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
-  const coord = useMemo<Coord>(
-    () => ({
-      worldToCanvas: (wx: number, wy: number) => ({
+  const coord = useMemo<Coord>(() => {
+    const worldToCanvas = (wx: number, wy: number) => {
+      // 仅做 scale/offset 转换
+      // ctx 的变换链会处理 mapRotation，所以这里不需要考虑旋转
+      return {
         x: wx * view.scale + view.offset.x,
         y: -wy * view.scale + view.offset.y,
-      }),
-      canvasToWorld: (cx: number, cy: number) => ({
-        x: (cx - view.offset.x) / view.scale,
-        y: -(cy - view.offset.y) / view.scale,
-      }),
-    }),
-    [view]
-  );
+      };
+    };
+
+    const canvasToWorld = (px: number, py: number) => {
+      const canvas = canvasRef.current;
+      let ux = px;
+      let uy = py;
+
+      if (canvas) {
+        // 点击坐标需要逆旋转，因为 ctx 被旋转了但点击坐标没有
+        const cx = canvas.clientWidth / 2;
+        const cy = canvas.clientHeight / 2;
+        const dx = px - cx;
+        const dy = py - cy;
+        const cos = Math.cos(-mapRotation);  // 逆旋转角度
+        const sin = Math.sin(-mapRotation);
+
+        // 逆旋转点击坐标
+        const invx = dx * cos - dy * sin;
+        const invy = dx * sin + dy * cos;
+
+        ux = cx + invx;
+        uy = cy + invy;
+      }
+
+      return {
+        x: (ux - view.offset.x) / view.scale,
+        y: -(uy - view.offset.y) / view.scale,
+      };
+    };
+
+    return { worldToCanvas, canvasToWorld };
+  }, [view, mapRotation, canvasRef]);
 
   // Zoom
   useEffect(() => {
@@ -114,8 +141,8 @@ export const usePanZoom = (
           pos = getMouseCanvasPos(e, canvas);
         }
         const { x: mx, y: my } = pos;
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const centerX = canvas.clientWidth / 2;
+        const centerY = canvas.clientHeight / 2;
         const dx = mx - centerX;
         const dy = centerY - my;
         lastMouse.current = { x: Math.atan2(dy, dx), y: 0 }; // 记录初始角度
@@ -173,9 +200,25 @@ export const usePanZoom = (
         /** 旋转箭头 */
         setEditingNode((node) => {
           if (!node) return null;
+          const canvas = canvasRef.current;
           const { x: cx, y: cy } = coord.worldToCanvas(node.x, node.y);
-          const dx = x - cx;
-          const dy = cy - y;
+
+          // 需要对鼠标坐标进行逆旋转，因为屏幕坐标没有经过 ctx 旋转
+          let mx = x;
+          let my = y;
+          if (canvas) {
+            const centerX = canvas.clientWidth / 2;
+            const centerY = canvas.clientHeight / 2;
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const cos = Math.cos(-mapRotation);
+            const sin = Math.sin(-mapRotation);
+            mx = centerX + (dx * cos - dy * sin);
+            my = centerY + (dx * sin + dy * cos);
+          }
+
+          const dx = mx - cx;
+          const dy = cy - my;
           const theta = Math.atan2(dy, dx);
           return { ...node, theta };
         });
@@ -184,8 +227,8 @@ export const usePanZoom = (
         if (!isRotating.current) return;
 
         const { x: mx, y: my } = pos;
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const centerX = canvas.clientWidth / 2;
+        const centerY = canvas.clientHeight / 2;
         const dx = mx - centerX;
         const dy = centerY - my;
         const currentTheta = Math.atan2(dy, dx);
@@ -216,8 +259,9 @@ export const usePanZoom = (
 
     // 1️⃣ 创建 mask canvas
     const maskCanvas = document.createElement("canvas");
-    maskCanvas.width = canvas.width;
-    maskCanvas.height = canvas.height;
+    // 使用 CSS 像素尺寸，保持与 coord / 鼠标坐标一致
+    maskCanvas.width = canvas.clientWidth;
+    maskCanvas.height = canvas.clientHeight;
     const mctx = maskCanvas.getContext("2d")!;
 
     mctx.fillStyle = "white";

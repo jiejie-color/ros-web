@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MySendMessage, Waypoint } from "../../../type";
+import type { Waypoint } from "../../../type";
 import type { Offset, OperatingState } from "../types";
 import { getMouseCanvasPos, getTouchCanvasPos, getClientPos } from "../utils";
-import { INITIAL_POSE_SERVICE } from "../../../hooks/topic";
-import type { Map_Message } from "../../../type/topicRespon";
+import { CURRENT_MAP_INFO_TOPIC, INITIAL_POSE_SERVICE, SAVE_EDITED_MAPS_SERVICE, SET_MAP_PIXEL_INDICES_SERVICE } from "../../../hooks/topic";
+import type { Current_Map_Info_Message, Map_Message } from "../../../type/topicRespon";
+import { useWebSocketContext } from "../../../hooks/useWebSocket";
 
 export interface Coord {
   worldToCanvas: (wx: number, wy: number) => Offset;
@@ -21,13 +22,13 @@ export const usePanZoom = (
   setEditingNode: React.Dispatch<React.SetStateAction<Waypoint | null>>,
   setIsEditingNode: React.Dispatch<React.SetStateAction<boolean>>,
   mapData: Map_Message | null,
-  sendMessage: MySendMessage,
   editingNode: Waypoint | null,
   setMapRotation: React.Dispatch<React.SetStateAction<number>>,
   mapRotation: number,
   setFreePoints: React.Dispatch<React.SetStateAction<{ x: number; y: number }[]>>,
   freePoints: { x: number; y: number }[]
 ) => {
+  const { sendMessage, emitter } = useWebSocketContext();
   const [view, setView] = useState<View>({
     scale: 1,
     offset: { x: 0, y: 0 },
@@ -221,7 +222,7 @@ export const usePanZoom = (
     const { resolution, origin, width, height } = mapData!.msg.info;
 
     const mx = Math.floor((wx - origin.position.x) / resolution);
-    const my = Math.floor((wy - origin.position.y) / resolution);
+    const my = height - 1 - Math.floor((wy - origin.position.y) / resolution);
 
     if (mx < 0 || my < 0 || mx >= width || my >= height) return -1;
 
@@ -264,21 +265,51 @@ export const usePanZoom = (
       }
     }
     const sendEraseToROS = (indices: number[]) => {
-      sendMessage({
-        op: "call_service",
-        topic: "/web_map_erase",
-        args: { data: indices }
-      });
+      const handleCurrentMapInfo = (res: Current_Map_Info_Message) => {
+        emitter.off(CURRENT_MAP_INFO_TOPIC, handleCurrentMapInfo);
+        sendMessage({
+          op: "call_service",
+          service: SET_MAP_PIXEL_INDICES_SERVICE,
+          args: {
+            indices,
+            map_name: res.msg.map_name,
+            pixel_value: 254,
+          }
+        });
+        setTimeout(() => {
+          sendMessage({
+            op: "call_service",
+            service: SAVE_EDITED_MAPS_SERVICE,
+            id: SAVE_EDITED_MAPS_SERVICE,
+            args: {
+              map_name: res.msg.map_name,
+            }
+          });
+          // sendMessage(
+          //   ({
+          //     op: "call_service",
+          //     service: CONTROL_LAUNCH_SERVICE,
+          //     args: {
+          //       launch_type: "car_vel",
+          //       action: "restart",
+          //       package_name: "car_vel"
+          //     },
+          //     id: CONTROL_LAUNCH_SERVICE
+          //   })
+          // )
+        }, 500)
+      };
+      emitter.on(CURRENT_MAP_INFO_TOPIC, handleCurrentMapInfo);
     };
     if (window.confirm(`你确定要擦除 ${indices.length} 个栅格吗？`)) {
       sendEraseToROS(indices);
     } else {
       setFreePoints([]);
-      console.log(indices)
+      // console.log(indices)
     }
 
     // sendEraseToROS(indices);
-  }, [coord, freePoints, sendMessage, setFreePoints, worldToMapIndex]);
+  }, [coord, emitter, freePoints, sendMessage, setFreePoints, worldToMapIndex]);
   const up = useCallback(
     (e: MouseEvent | TouchEvent) => {
       if (e instanceof TouchEvent) {

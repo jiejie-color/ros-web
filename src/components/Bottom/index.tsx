@@ -43,37 +43,38 @@ export const Bottom = ({
           zIndex: 1000,
         }}
       >
+        <button
+          style={{ padding: 12, marginRight: 20 }}
+          onClick={() => {
+            const canvas = canvasRef.current;
+            if (operatingState !== "rotate") {
+              canvas!.style.cursor = "pointer"; // 副作用：DOM操作
+              setOperatingState("rotate"); // 状态更新
+            } else {
+              canvas!.style.cursor = ""; // 副作用：DOM操作
+              setOperatingState(""); // 状态更新
+            }
+          }}
+        >
+          {operatingState === "rotate" ? "取消" : "旋转"}
+        </button>
+        <button
+          style={{ padding: 12, marginRight: 20 }}
+          onClick={() => {
+            const canvas = canvasRef.current;
+            if (operatingState !== "drag") {
+              canvas!.style.cursor = "pointer"; // 副作用：DOM操作
+              setOperatingState("drag"); // 状态更新
+            } else {
+              canvas!.style.cursor = ""; // 副作用：DOM操作
+              setOperatingState(""); // 状态更新
+            }
+          }}
+        >
+          {operatingState === "drag" ? "取消" : "拖动"}
+        </button>
         {mode === 'navigation' ? <>
-          <button
-            style={{ padding: 12, marginRight: 20 }}
-            onClick={() => {
-              const canvas = canvasRef.current;
-              if (operatingState !== "rotate") {
-                canvas!.style.cursor = "pointer"; // 副作用：DOM操作
-                setOperatingState("rotate"); // 状态更新
-              } else {
-                canvas!.style.cursor = ""; // 副作用：DOM操作
-                setOperatingState(""); // 状态更新
-              }
-            }}
-          >
-            {operatingState === "rotate" ? "取消" : "旋转"}
-          </button>
-          <button
-            style={{ padding: 12, marginRight: 20 }}
-            onClick={() => {
-              const canvas = canvasRef.current;
-              if (operatingState !== "drag") {
-                canvas!.style.cursor = "pointer"; // 副作用：DOM操作
-                setOperatingState("drag"); // 状态更新
-              } else {
-                canvas!.style.cursor = ""; // 副作用：DOM操作
-                setOperatingState(""); // 状态更新
-              }
-            }}
-          >
-            {operatingState === "drag" ? "取消" : "拖动"}
-          </button>
+
           <button
             style={{ padding: 12, marginRight: 20 }}
             onClick={() => {
@@ -105,32 +106,7 @@ export const Bottom = ({
           >
             {operatingState === "addPoint" ? "取消" : "添加节点"}
           </button>
-          <button
-            style={{ padding: 12, marginRight: 20 }}
-            onClick={() => {
-              sendMessage(
-                ({
-                  op: "call_service",
-                  service: CONTROL_LAUNCH_SERVICE,
-                  args: {
-                    launch_type: "mapping",
-                    action: "start",
-                    package_name: "car_vel"
-                  },
-                  id: CONTROL_LAUNCH_SERVICE
-                })
-              )
-              setTimeout(() => {
-                sendMessage(
-                  { op: "subscribe", topic: PROJECTED_MAP_TOPIC, id: PROJECTED_MAP_TOPIC }
-                );
-              }, 3000);
 
-              setMode("mapping");
-            }}
-          >
-            {"建图模式"}
-          </button>
           <button
             style={{ padding: 12, marginRight: 20 }}
             onClick={() => {
@@ -197,21 +173,7 @@ export const Bottom = ({
           >
             {isRobotControls ? "取消遥控" : "遥控"}
           </button>
-          <button
-            style={{ padding: 12, marginRight: 20 }}
-            onClick={() => {
-              const canvas = canvasRef.current;
-              if (operatingState !== "freeErase") {
-                canvas!.style.cursor = "pointer"; // 副作用：DOM操作
-                setOperatingState("freeErase"); // 状态更新
-              } else {
-                canvas!.style.cursor = ""; // 副作用：DOM操作
-                setOperatingState(""); // 状态更新
-              }
-            }}
-          >
-            {operatingState === "freeErase" ? "取消编辑地图" : "编辑地图"}
-          </button>
+
           <button
             style={{ padding: 12, marginRight: 20 }}
             onClick={() => {
@@ -236,17 +198,31 @@ export const Bottom = ({
             {"重启"}
           </button>
         </>
-          :
-          <>
-            <button
-              style={{ padding: 12, marginRight: 20 }}
-              onClick={() => {
-                setMode("navigation");
+          : null
+        }
+        {mode === "mapping" ? <>
+          <button
+            style={{ padding: 12, marginLeft: 20 }}
+            onClick={() => {
+              const mapName = prompt("请输入地图名称:", "地图_" + new Date().toISOString().slice(0, 10));
+              if (mapName !== null) {
+                sendMessage(
+                  { op: "unsubscribe", topic: PROJECTED_MAP_TOPIC, id: PROJECTED_MAP_TOPIC }
+                );
+                sendMessage(
+                  ({
+                    op: "call_service",
+                    service: MAP_SAVE_SERVICE,
+                    id: MAP_SAVE_SERVICE,
+                    args: {
+                      map_name: mapName
+                    },
+                  })
+                )
                 sendMessage(
                   {
                     op: "call_service",
                     service: CONTROL_LAUNCH_SERVICE,
-                    id: "map_save_service",
                     args: {
                       launch_type: "mapping",
                       action: "stop",
@@ -254,9 +230,6 @@ export const Bottom = ({
                     },
                   }
                 )
-                sendMessage(
-                  { op: "unsubscribe", topic: PROJECTED_MAP_TOPIC, id: PROJECTED_MAP_TOPIC }
-                );
                 sendMessage({
                   op: "call_service",
                   service: CONTROL_LAUNCH_SERVICE,
@@ -267,57 +240,52 @@ export const Bottom = ({
                   },
                   id: CONTROL_LAUNCH_SERVICE
                 });
-              }}
-            >
-              {"导航模式"}
-            </button>
-            <button
-              style={{ padding: 12, marginLeft: 20 }}
-              onClick={() => {
-                const mapName = prompt("请输入地图名称:", "地图_" + new Date().toISOString().slice(0, 10));
-                if (mapName !== null) {
-                  sendMessage(
-                    { op: "unsubscribe", topic: PROJECTED_MAP_TOPIC, id: PROJECTED_MAP_TOPIC }
-                  );
-                  sendMessage(
-                    ({
-                      op: "call_service",
-                      service: MAP_SAVE_SERVICE,
-                      id: MAP_SAVE_SERVICE,
-                      args: {
-                        map_name: mapName
-                      },
-                    })
-                  )
-                  sendMessage(
-                    {
-                      op: "call_service",
-                      service: CONTROL_LAUNCH_SERVICE,
-                      args: {
-                        launch_type: "mapping",
-                        action: "stop",
-                        package_name: "car_vel"
-                      },
-                    }
-                  )
-                  sendMessage({
-                    op: "call_service",
-                    service: CONTROL_LAUNCH_SERVICE,
-                    args: {
-                      launch_type: "car_vel",
-                      action: "start",
-                      package_name: "car_vel"
-                    },
-                    id: CONTROL_LAUNCH_SERVICE
-                  });
-                  setMode("navigation");
-                }
-              }}
-            >
-              保存
-            </button>
+                setMode("navigation");
+              }
+            }}
+          >
+            保存
+          </button>
+        </> : null}
+        {mode === 'editing' ? <>
+          <button
+            style={{ padding: 12, marginRight: 20 }}
+            onClick={() => {
+              const canvas = canvasRef.current;
+              if (operatingState !== "freeErase") {
+                canvas!.style.cursor = "pointer"; // 副作用：DOM操作
+                setOperatingState("freeErase"); // 状态更新
+              } else {
+                canvas!.style.cursor = ""; // 副作用：DOM操作
+                setOperatingState(""); // 状态更新
+              }
+            }}
+          >
+            {operatingState === "freeErase" ? "取消清除障碍" : "清除障碍"}
+          </button>
+          <button
+            style={{ padding: 12, marginRight: 20 }}
+            onClick={() => {
+              const canvas = canvasRef.current;
+              if (operatingState !== "freeErase") {
+                canvas!.style.cursor = "pointer"; // 副作用：DOM操作
+                setOperatingState("freeErase"); // 状态更新
+              } else {
+                canvas!.style.cursor = ""; // 副作用：DOM操作
+                setOperatingState(""); // 状态更新
+              }
+            }}
+          >
+            {operatingState === "freeErase" ? "取消添加障碍" : "添加障碍"}
+          </button>
 
-          </>}
+          <button
+            style={{ padding: 12, marginLeft: 20 }}
+            onClick={() => { }}
+          >
+            保存
+          </button>
+        </> : null}
 
       </div >
     </>

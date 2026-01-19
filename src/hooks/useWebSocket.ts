@@ -1,12 +1,14 @@
 import { createContext, useContext } from 'react';
-import type { SendMessageParams, } from '../type';
+import type { Mode, SendMessageParams, } from '../type';
 import {
     CONTROL_LAUNCH_SERVICE, CURRENT_MAP_INFO_TOPIC,
+    GET_EDITED_MAPS_SERVICE,
     GET_MAP_LIST_SERVICE, LAUNCH_STATUS_TOPIC, LIST_WAYPOINTS_SERVICE, MAP_TOPIC,
     NAVIGATION_STATUS_TOPIC, ODOMETRY_TOPIC, PLAN_TOPIC, PROJECTED_MAP_TOPIC, ROBOT_POSE_TOPIC, SCAN_TOPIC
 } from './topic';
 import type {
     Control_Launch_Message, Current_Map_Info_Message,
+    Get_Edited_Map_Message,
     Get_Map_List_Message, Launch_Status_Message, List_Waypoints_Message, Map_Message,
     Navigation_Status_Message, Odometry_Message, Plan_Message, Robot_Bose_Message, Scan_Message
 } from '../type/topicRespon';
@@ -25,6 +27,7 @@ interface TopicTypeMap {
     [NAVIGATION_STATUS_TOPIC]: Navigation_Status_Message; // 根据需要定义具体类型
     [CONTROL_LAUNCH_SERVICE]: Control_Launch_Message; // 根据需要定义具体类型
     [ODOMETRY_TOPIC]: Odometry_Message; // 根据需要定义具体类型
+    [GET_EDITED_MAPS_SERVICE]: Get_Edited_Map_Message;
 }
 
 type ListenerMap = {
@@ -46,6 +49,7 @@ export class SimpleEventEmitter {
         [NAVIGATION_STATUS_TOPIC]: [],
         [CONTROL_LAUNCH_SERVICE]: [],
         [ODOMETRY_TOPIC]: [],
+        [GET_EDITED_MAPS_SERVICE]: [],
 
     };
 
@@ -78,6 +82,12 @@ export class SimpleEventEmitter {
 interface WebSocketContextType {
     sendMessage: (msg: SendMessageParams) => void;
     emitter: SimpleEventEmitter;
+    curMap: string;
+    mode: Mode;
+    setMode: React.Dispatch<React.SetStateAction<Mode>>;
+    mapList: string[];
+    mapData: Map_Message | null;
+    setMapData: React.Dispatch<React.SetStateAction<Map_Message | null>>;
 }
 
 export const WebSocketContext = createContext<WebSocketContextType | null>(null);

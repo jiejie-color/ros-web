@@ -93,3 +93,13 @@ export interface Control_Launch_Message {
 export interface Odometry_Message {
     msg: { pose: Pose }
 }
+export interface Get_Edited_Map_Message {
+    values: {
+        width: number;
+        height: number;
+        has_changes: boolean;
+        message: string;
+        success: boolean;
+        image_data: number[];
+    }
+}

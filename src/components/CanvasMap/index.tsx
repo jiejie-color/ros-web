@@ -8,7 +8,7 @@ import { drawRobot } from "./render/drawRobot";
 import { drawWaypoints } from "./render/drawWaypoints";
 import { drawPath } from "./render/drawPath"; // 导入路径绘制函数
 import { ContextMenu } from "./components/ContextMenu";
-import type { Mode, Waypoint } from "../../type";
+import type { Waypoint } from "../../type";
 import { Bottom } from "../Bottom";
 import { WaypointEditor } from "./components/WaypointEditor";
 import { drawArrow } from "./render/drawArrow";
@@ -26,14 +26,14 @@ const CanvasMap = () => {
     useState<OperatingState>("");
   const [editingNode, setEditingNode] = useState<Waypoint | null>(null);
   const [isEditingNode, setIsEditingNode] = useState<boolean>(false);
-  const [mode, setMode] = useState<Mode>("navigation");
+  // const [mode, setMode] = useState<Mode>("navigation");
   const [mapRotation, setMapRotation] = useState<number>(0);
   const [isLaser, setIsLaser] = useState<boolean>(false);
   const [isPlan, setIsPlan] = useState<boolean>(false);
   const [isRobotControls, setIsRobotControls] = useState<boolean>(false);
   const [freePoints, setFreePoints] = useState<{ x: number; y: number }[]>([]);
-  const { sendMessage, } = useWebSocketContext();
-  const { mapData, robot, projected_map, waypoints, laserScan, plan, } = useGetData();
+  const { sendMessage, mode, setMode, mapData, } = useWebSocketContext();
+  const { robot, waypoints, laserScan, plan, } = useGetData();
 
   const { view, coord } = usePanZoom(
     canvasRef,
@@ -42,7 +42,6 @@ const CanvasMap = () => {
     setEditingNode,
     setIsEditingNode,
     mapData,
-    sendMessage,
     editingNode,
     setMapRotation,
     mapRotation,
@@ -55,8 +54,9 @@ const CanvasMap = () => {
     if (!ctx) return;
     ctx.clearRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight);
 
-    drawMap(ctx, mode === "navigation" ? mapData : projected_map, coord.worldToCanvas, view.scale,);
-    drawRobot(ctx, robot, coord.worldToCanvas, view.scale);
+    drawMap(ctx, mapData, coord.worldToCanvas, view.scale,);
+    if (mode !== "editing")
+      drawRobot(ctx, robot, coord.worldToCanvas, view.scale);
     if (laserScan && isLaser) {
       drawLaserScan(ctx, laserScan, coord.worldToCanvas, robot);
     }
@@ -72,7 +72,7 @@ const CanvasMap = () => {
     }
 
     ctx.restore();
-  }, [mapData, projected_map, robot, laserScan, waypoints, plan, view, ctxRef, coord, editingNode, operatingState, mode, mapRotation, isLaser, freePoints]);
+  }, [mapData, robot, laserScan, waypoints, plan, view, ctxRef, coord, editingNode, operatingState, mode, mapRotation, isLaser, freePoints]);
 
   return (
     <>

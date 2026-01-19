@@ -25,6 +25,7 @@ function AppContent() {
                 top: 20,
                 color: "white",
                 right: 20,
+                zIndex: 99
               }}
                 onClick={() => { setIsSetting(true) }}
               >

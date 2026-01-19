@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { CURRENT_MAP_INFO_TOPIC, DELETE_MAP_SERVICE, GET_MAP_LIST_SERVICE, LIST_WAYPOINTS_SERVICE, SWITCH_MAP_SERVICE } from '../../hooks/topic';
+import React, { useState } from 'react';
+import { DELETE_MAP_SERVICE, GET_MAP_LIST_SERVICE, LIST_WAYPOINTS_SERVICE, SWITCH_MAP_SERVICE } from '../../hooks/topic';
 import { useWebSocketContext } from '../../hooks/useWebSocket';
-import type { Current_Map_Info_Message, Get_Map_List_Message } from '../../type/topicRespon';
 
 interface SettingsProps {
     onClose: () => void;
@@ -10,11 +9,10 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({
     onClose,
 }) => {
+    const { sendMessage, curMap: curMapInContext, mapList } = useWebSocketContext();
     const [activeTab, setActiveTab] = useState('mapList');
-    const [curMap, setCurMap] = useState<string>('');
+    const [curMap, setCurMap] = useState<string>(curMapInContext);
     const [localLoading, setLocalLoading] = useState(false); // 本地加载状态
-    const [mapList, setMapList] = useState<string[]>([]);
-    const { sendMessage, emitter } = useWebSocketContext();
     const handleSave = async () => {
         if (activeTab === "mapList") {
             // 设置全局和本地加载状态
@@ -46,29 +44,6 @@ const Settings: React.FC<SettingsProps> = ({
         }
     };
 
-    useEffect(() => {
-        sendMessage(
-            {
-                "op": "call_service",
-                "service": GET_MAP_LIST_SERVICE,
-                "id": GET_MAP_LIST_SERVICE,
-            }
-        )
-
-        // const unregisterMapList = registerCallback("/get_map_list", (res) => setMapList(res.values.map_names ?? []));
-        const handleMapList = (res: Get_Map_List_Message) => setMapList(res.values.map_names ?? []);
-        emitter.on(GET_MAP_LIST_SERVICE, handleMapList);
-
-        const handleCurrentMapInfo = (res: Current_Map_Info_Message) => {
-            setCurMap(res.msg.map_name)
-            emitter.off(CURRENT_MAP_INFO_TOPIC, handleCurrentMapInfo);
-        };
-        emitter.on(CURRENT_MAP_INFO_TOPIC, handleCurrentMapInfo);
-        return () => {
-            emitter.off(GET_MAP_LIST_SERVICE, handleMapList);
-            emitter.off(CURRENT_MAP_INFO_TOPIC, handleCurrentMapInfo);
-        }
-    }, [emitter, sendMessage]);
 
     return (
         <div

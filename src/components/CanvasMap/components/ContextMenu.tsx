@@ -72,7 +72,6 @@ export const ContextMenu = ({
 
     const move = (e: MouseEvent) => {
       const { x: cx, y: cy } = getMouseCanvasPos(e, canvas);
-      console.log(cx, cy);
       const hit = hitTestWaypoint(cx, cy, waypoints, coord.worldToCanvas);
       if (operatingState !== "addPoint" && operatingState !== "drag") {
         if (hit) {

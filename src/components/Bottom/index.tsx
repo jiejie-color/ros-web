@@ -1,7 +1,7 @@
 import type { OperatingState } from "../CanvasMap/types";
 import type { Mode, } from "../../type";
 import { useWebSocketContext } from "../../hooks/useWebSocket";
-import { CONTROL_LAUNCH_SERVICE, MAP_SAVE_SERVICE, PLAN_TOPIC, PROJECTED_MAP_TOPIC, SAVE_EDITED_MAPS_SERVICE, SCAN_TOPIC } from "../../hooks/topic";
+import { CONTROL_LAUNCH_SERVICE, GLOBAL_COSTMAP_TOPIC, MAP_SAVE_SERVICE, PLAN_TOPIC, PROJECTED_MAP_TOPIC, SAVE_EDITED_MAPS_SERVICE, SCAN_TOPIC } from "../../hooks/topic";
 import type { Save_Edited_Maps_Message } from "../../type/topicRespon";
 import { useCallback, useEffect } from "react";
 
@@ -15,8 +15,8 @@ export const Bottom = ({
   isLaser,
   isPlan,
   setIsPlan,
-  isRobotControls,
-  setIsRobotControls,
+  isCostMap,
+  setIsCostMap,
 }: {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   setOperatingState: React.Dispatch<React.SetStateAction<OperatingState>>;
@@ -27,8 +27,8 @@ export const Bottom = ({
   isLaser: boolean;
   isPlan: boolean;
   setIsPlan: React.Dispatch<React.SetStateAction<boolean>>;
-  isRobotControls: boolean;
-  setIsRobotControls: React.Dispatch<React.SetStateAction<boolean>>;
+  isCostMap: boolean;
+  setIsCostMap: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
   const { sendMessage, curEditMap, emitter } = useWebSocketContext();
 
@@ -47,6 +47,59 @@ export const Bottom = ({
       emitter.off(SAVE_EDITED_MAPS_SERVICE, handleSaveEditedMaps)
     }
   }, [emitter, handleSaveEditedMaps])
+
+
+  useEffect(() => {
+    if (!isCostMap) return;
+
+    sendMessage({
+      op: "subscribe",
+      topic: GLOBAL_COSTMAP_TOPIC,
+      throttle_rate: 100,
+    });
+
+    return () => {
+      sendMessage({
+        op: "unsubscribe",
+        topic: GLOBAL_COSTMAP_TOPIC,
+      });
+    };
+  }, [isCostMap, sendMessage]);
+
+  useEffect(() => {
+    if (!isLaser) return;
+
+    sendMessage({
+      op: "subscribe",
+      topic: SCAN_TOPIC,
+      throttle_rate: 100, // ms，10Hz
+    });
+
+    return () => {
+      sendMessage({
+        op: "unsubscribe",
+        topic: SCAN_TOPIC,
+      });
+    };
+  }, [isLaser, sendMessage]);
+
+
+  useEffect(() => {
+    if (!isPlan) return;
+
+    sendMessage({
+      op: "subscribe",
+      topic: PLAN_TOPIC,
+      throttle_rate: 100, // ms，10Hz
+    });
+
+    return () => {
+      sendMessage({
+        op: "unsubscribe",
+        topic: PLAN_TOPIC,
+      });
+    };
+  }, [isPlan, sendMessage]);
 
   return (
     <>
@@ -107,7 +160,6 @@ export const Bottom = ({
               }
             }}
           >
-
             {operatingState === "setInitialPose" ? "取消" : "设置初始位置"}
           </button>
           <button
@@ -129,28 +181,7 @@ export const Bottom = ({
           <button
             style={{ padding: 12, marginRight: 20 }}
             onClick={() => {
-              if (!isPlan) {
-                sendMessage(
-                  (
-                    {
-                      op: "subscribe",
-                      topic: PLAN_TOPIC,
-                      throttle_rate: 100, // ms，10Hz
-                    }
-                  )
-                );
-              } else {
-                sendMessage(
-                  (
-                    {
-                      op: "unsubscribe",
-                      topic: PLAN_TOPIC,
-                    }
-                  )
-                );
-              }
               setIsPlan((prev) => !prev);
-
             }}
           >
             {isPlan ? "取消路径规划" : "路径规划"}
@@ -159,26 +190,7 @@ export const Bottom = ({
           <button
             style={{ padding: 12, marginRight: 20 }}
             onClick={() => {
-              if (!isLaser) {
-                sendMessage(
-                  (
-                    {
-                      op: "subscribe",
-                      topic: SCAN_TOPIC,
-                      throttle_rate: 100, // ms，10Hz
-                    }
-                  )
-                );
-              } else {
-                sendMessage(
-                  (
-                    {
-                      op: "unsubscribe",
-                      topic: SCAN_TOPIC,
-                    }
-                  )
-                );
-              }
+
               setIsLaser((prev) => !prev);
             }}
           >
@@ -187,16 +199,14 @@ export const Bottom = ({
           <button
             style={{ padding: 12, marginRight: 20 }}
             onClick={() => {
-              setIsRobotControls((prev) => !prev);
+              setIsCostMap((prev) => !prev);
             }}
           >
-            {isRobotControls ? "取消遥控" : "遥控"}
+            {isCostMap ? "取消全局代价地图" : "全局代价地图"}
           </button>
-
           <button
             style={{ padding: 12, marginRight: 20 }}
             onClick={() => {
-              // setIsRobotControls((prev) => !prev);
               if (window.confirm(`确定要重启机器人吗？`)) {
                 sendMessage(
                   ({

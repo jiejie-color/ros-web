@@ -8,6 +8,9 @@ export const CURRENT_MAP_INFO_TOPIC = "/current_map_info";
 export const LAUNCH_STATUS_TOPIC = "/launch_status";
 export const NAVIGATION_STATUS_TOPIC = "/navigation_status";
 export const ODOMETRY_TOPIC = "/Odometry";
+export const GLOBAL_COSTMAP_TOPIC = "/global_costmap/costmap";
+
+
 
 export const LIST_WAYPOINTS_SERVICE = "/list_waypoints";
 export const GET_MAP_LIST_SERVICE = "/get_map_list";

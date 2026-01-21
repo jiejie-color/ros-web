@@ -11,7 +11,7 @@ export interface Waypoint {
   theta: number;
   name: string;
 }
-export type Mode = "" | "navigation" | "mapping" | "editing";
+export type Mode = "" | "navigation" | "mapping" | "editing" | 'none';
 
 
 

@@ -86,8 +86,8 @@ export interface Current_Map_Info_Message {
     }
 }
 export interface Control_Launch_Message {
-    msg: {
-        launch: boolean;
+    values: {
+        success: boolean;
     }
 }
 export interface Odometry_Message {
@@ -109,5 +109,23 @@ export interface Save_Edited_Maps_Message {
     values: {
         success: boolean;
         message: string;
+    }
+}
+
+export interface Global_Costmap_Message {
+    msg: {
+        data: number[];
+        info: {
+            width: number;
+            height: number;
+            resolution: number;
+            origin: { position: { x: number; y: number } };
+        };
+        header: {
+            stamp: {
+                sec: number;
+                nanosec: number;
+            }
+        }
     }
 }

@@ -9,7 +9,8 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({
     onClose,
 }) => {
-    const { sendMessage, curMap: curMapInContext, mapList } = useWebSocketContext();
+    const { sendMessage, curMap: curMapInContext, mapList, robotControlMode,
+        setRobotControlMode } = useWebSocketContext();
     const [activeTab, setActiveTab] = useState('mapList');
     const [curMap, setCurMap] = useState<string>(curMapInContext);
     const [localLoading, setLocalLoading] = useState(false); // 本地加载状态
@@ -136,9 +137,27 @@ const Settings: React.FC<SettingsProps> = ({
                             fontSize: 14,
                             fontWeight: activeTab === 'mapList' ? 'bold' : 'normal',
                             borderTopRightRadius: 8,
+                            borderRadius: 0,
                         }}
                     >
                         地图设置
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('robotControls')}
+                        style={{
+                            flex: 1,
+                            padding: '12px 16px',
+                            border: 'none',
+                            background: activeTab === 'robotControls' ? '#3a3a3a' : 'transparent',
+                            color: activeTab === 'robotControls' ? '#fff' : '#aaa',
+                            cursor: 'pointer',
+                            fontSize: 14,
+                            fontWeight: activeTab === 'robotControls' ? 'bold' : 'normal',
+                            borderTopRightRadius: 8,
+                            borderRadius: 0,
+                        }}
+                    >
+                        遥控
                     </button>
                 </div>
 
@@ -219,6 +238,34 @@ const Settings: React.FC<SettingsProps> = ({
                             </div>
                         </>
                     )}
+                    {activeTab === 'robotControls' && (
+                        <>
+                            <h3 style={{ margin: '0 0 20px 0', color: '#fff', borderBottom: '1px solid #444', paddingBottom: '10px' }}>
+                                遥控设置
+                            </h3>
+                            <div style={{ marginBottom: 20 }}>
+                                <label style={{ display: 'block', marginBottom: 5, color: '#ccc' }}>
+                                    遥控开关
+                                </label>
+                                <select
+                                    value={robotControlMode}
+                                    onChange={(e) => setRobotControlMode(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        border: '1px solid #555',
+                                        borderRadius: 4,
+                                        backgroundColor: '#333',
+                                        color: '#fff',
+                                        fontSize: 14,
+                                    }}
+                                >
+                                    <option value="open">开启</option>
+                                    <option value="close">关闭</option>
+                                </select>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* 按钮区域 */}
@@ -232,29 +279,15 @@ const Settings: React.FC<SettingsProps> = ({
                 }}>
                     <button
                         onClick={onClose}
-                        style={{
-                            padding: '8px 16px',
-                            border: '1px solid #555',
-                            borderRadius: 4,
-                            backgroundColor: '#444',
-                            color: '#fff',
-                            cursor: 'pointer',
-                            fontSize: 14,
-                        }}
                     >
-                        取消
+                        关闭
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={localLoading} // 在加载时禁用按钮
                         style={{
-                            padding: '8px 16px',
-                            border: 'none',
-                            borderRadius: 4,
                             backgroundColor: localLoading ? '#6c757d' : '#007bff',
-                            color: '#fff',
                             cursor: localLoading ? 'not-allowed' : 'pointer',
-                            fontSize: 14,
                             opacity: localLoading ? 0.7 : 1,
                         }}
                     >

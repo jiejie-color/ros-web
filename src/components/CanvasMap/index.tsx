@@ -18,6 +18,7 @@ import { drawFreePoints } from "./render/drawFreePoints";
 import { useWebSocketContext } from "../../hooks/useWebSocket";
 import { useGetData } from "./useGetData";
 import { Top } from "../Top";
+import { drawCostMap } from "./render/drawCostMap";
 
 const CanvasMap = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,11 +30,11 @@ const CanvasMap = () => {
   // const [mode, setMode] = useState<Mode>("navigation");
   const [mapRotation, setMapRotation] = useState<number>(0);
   const [isLaser, setIsLaser] = useState<boolean>(false);
-  const [isPlan, setIsPlan] = useState<boolean>(false);
-  const [isRobotControls, setIsRobotControls] = useState<boolean>(false);
+  const [isPlan, setIsPlan] = useState<boolean>(true);
+  const [isCostMap, setIsCostMap] = useState<boolean>(true);
   const [freePoints, setFreePoints] = useState<{ x: number; y: number }[]>([]);
-  const { sendMessage, mode, setMode, mapData, } = useWebSocketContext();
-  const { robot, waypoints, laserScan, plan, } = useGetData();
+  const { sendMessage, mode, setMode, mapData, robotControlMode } = useWebSocketContext();
+  const { robot, waypoints, laserScan, plan, global_costmap } = useGetData();
   const mapCacheRef = useRef<HTMLCanvasElement | null>(null);
 
   const { view, coord } = usePanZoom(
@@ -52,12 +53,12 @@ const CanvasMap = () => {
   const { ctxRef } = useCanvasInit(canvasRef, containerRef,);
 
   useEffect(() => {
+
     if (!mapData || !ctxRef.current) return;
 
     const base = document.createElement("canvas");
     base.width = ctxRef.current.canvas.width;
     base.height = ctxRef.current.canvas.height;
-
     const baseCtx = base.getContext("2d")!;
     baseCtx.clearRect(0, 0, base.width, base.height);
 
@@ -102,6 +103,9 @@ const CanvasMap = () => {
           console.log(editingNode);
           drawArrow(ctx, editingNode, coord);
         }
+        if (global_costmap && isCostMap) {
+          drawCostMap(ctx, global_costmap, coord.worldToCanvas);
+        }
       }
 
       // editing
@@ -113,7 +117,7 @@ const CanvasMap = () => {
 
     rafId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(rafId);
-  }, [coord, ctxRef, editingNode, freePoints, isLaser, isPlan, laserScan, mode, operatingState, plan, robot, view.scale, waypoints]);
+  }, [coord, ctxRef, editingNode, freePoints, global_costmap, isCostMap, isLaser, isPlan, laserScan, mode, operatingState, plan, robot, view.scale, waypoints]);
 
   return (
     <>
@@ -148,10 +152,10 @@ const CanvasMap = () => {
         isLaser={isLaser}
         isPlan={isPlan}
         setIsPlan={setIsPlan}
-        isRobotControls={isRobotControls}
-        setIsRobotControls={setIsRobotControls}
+        isCostMap={isCostMap}
+        setIsCostMap={setIsCostMap}
       ></Bottom>
-      {isRobotControls ? <RobotControls></RobotControls> : null}
+      {robotControlMode === "open" ? <RobotControls></RobotControls> : null}
 
     </>
   );

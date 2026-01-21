@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useWebSocketContext } from "../../hooks/useWebSocket";
-import { CONTROL_LAUNCH_SERVICE, CURRENT_MAP_INFO_TOPIC, GET_EDITED_MAPS_SERVICE, NAVIGATION_STATUS_TOPIC, PAUSE_NAVIGATION_SERVICE, PROJECTED_MAP_TOPIC } from "../../hooks/topic";
+import { CONTROL_LAUNCH_SERVICE, GET_EDITED_MAPS_SERVICE, MAP_TOPIC, NAVIGATION_STATUS_TOPIC, PAUSE_NAVIGATION_SERVICE, PROJECTED_MAP_TOPIC } from "../../hooks/topic";
 import type { Get_Edited_Map_Message, Navigation_Status_Message } from "../../type/topicRespon";
 import styles from "./styles.module.css";
 import type { Mode } from "../../type";
@@ -12,23 +12,15 @@ export const Top = () => {
   const { sendMessage, emitter, curMap, mode, setMode, mapList, setMapData, curEditMap, setCurEditMap } = useWebSocketContext();
 
   useEffect(() => {
-    const navigationStatusListener = (res: Navigation_Status_Message) => setNavigationStatus(res);
+    const navigationStatusListener = (res: Navigation_Status_Message) => {
+      setNavigationStatus(res)
+    };
     emitter.on(NAVIGATION_STATUS_TOPIC, navigationStatusListener);
     // 发送订阅消息
     sendMessage({ op: "subscribe", topic: NAVIGATION_STATUS_TOPIC });
 
-    sendMessage({
-      op: "subscribe",
-      id: CURRENT_MAP_INFO_TOPIC,
-      topic: CURRENT_MAP_INFO_TOPIC,
-    });
     // 清理回调
     return () => {
-      sendMessage({
-        op: "unsubscribe",
-        id: CURRENT_MAP_INFO_TOPIC,
-        topic: CURRENT_MAP_INFO_TOPIC,
-      });
       sendMessage({
         op: "unsubscribe",
         id: NAVIGATION_STATUS_TOPIC,
@@ -41,7 +33,22 @@ export const Top = () => {
 
   const toggleMode = (type: Mode) => {
     setMode(type);
-    setMapData(null)
+    setMapData({
+      msg: {
+        data: [],
+        info: {
+          width: 0,
+          height: 0,
+          resolution: 0,
+          origin: {
+            position: {
+              x: 0,
+              y: 0
+            }
+          }
+        }
+      }
+    })
 
     if (type === "mapping") {
       sendMessage(
@@ -85,6 +92,16 @@ export const Top = () => {
         },
         id: CONTROL_LAUNCH_SERVICE
       });
+      setTimeout(() => {
+        sendMessage({
+          op: "subscribe",
+          topic: MAP_TOPIC,
+          id: MAP_TOPIC
+        });
+      }, 3000);
+
+
+
     } else {
       setCurEditMap("")
     }
@@ -121,8 +138,8 @@ export const Top = () => {
         }}
       >
         {mode === "navigation" ?
-          <span style={{ margin: '0 20px' }}>
-            当前地图: {curMap}
+          <span className={styles["curMap"]}>
+            📍 当前地图: <strong>{curMap || '未加载'}</strong>
           </span> : null
         }
 
@@ -179,8 +196,16 @@ export const Top = () => {
         }
 
 
+
         {navigationStatus
-          ? `导航状态: ${navigationStatus?.msg.status} 导航点位: ${navigationStatus?.msg.waypoint_name}`
+          ? <div className={styles["navigationStatus"]}>
+            <span style={{ marginRight: '15px' }}>
+              📍 状态: <strong>{navigationStatus?.msg.status}</strong>
+            </span>
+            <span>
+              📍 目标: <strong>{navigationStatus?.msg.waypoint_name || '无'}</strong>
+            </span>
+          </div>
           : null}
         {navigationStatus?.msg.status === "navigating" ? (
           <button

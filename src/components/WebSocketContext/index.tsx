@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState, } from 'react';
 import useWebSocket from 'react-use-websocket';
 import { WebSocketContext, SimpleEventEmitter, type TopicTypeMap } from '../../hooks/useWebSocket';
 import type { Mode, SendMessageParams } from '../../type';
-import type { Current_Map_Info_Message, Get_Map_List_Message, Launch_Status_Message, Map_Message } from '../../type/topicRespon';
+import type { Control_Launch_Message, Current_Map_Info_Message, Get_Map_List_Message, Launch_Status_Message, Map_Message } from '../../type/topicRespon';
 import { CONTROL_LAUNCH_SERVICE, CURRENT_MAP_INFO_TOPIC, GET_MAP_LIST_SERVICE, LAUNCH_STATUS_TOPIC, MAP_TOPIC, PROJECTED_MAP_TOPIC } from '../../hooks/topic';
 
 interface WebSocketProviderProps {
@@ -15,7 +15,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     const [mode, setMode] = useState<Mode>(''); // 新增状态控制当前激活的模式
     const [mapList, setMapList] = useState<string[]>([]);
     const [curEditMap, setCurEditMap] = useState<string>("");
-    const fragmentCache = useRef(new Map<string, string[]>());
+    const fragmentCache = useRef(new Map<string, string[]>())
+    const [robotControlMode, setRobotControlMode] = useState<string>('close');
     const { sendMessage: wsSendMessage } = useWebSocket("ws://192.168.0.155:9090", {
         onMessage: (event) => {
             try {
@@ -39,7 +40,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
                         if (topic) {
                             emitter.emit(topic, merged);
                         }
-                        console.log('合并完成:');
                     }
                     return;
                 }
@@ -68,7 +68,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     useEffect(() => {
         const handleCurrentMapInfo = (res: Current_Map_Info_Message) => {
             setCurMap(res.msg.map_name)
-            emitter.off(CURRENT_MAP_INFO_TOPIC, handleCurrentMapInfo);
             sendMessage({
                 op: "unsubscribe",
                 id: CURRENT_MAP_INFO_TOPIC,
@@ -91,10 +90,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         }
     }, [emitter, sendMessage]);
     useEffect(() => {
-        if (mode === 'editing' || mode === '') return
-        const handleMapTopic = (res: Map_Message) => {
-            setMapData(res)
-        }
+        const handleMapTopic = (res: Map_Message) => setMapData(res)
         const handleProjectedMapTopic = (res: Map_Message) => setMapData(res)
 
         let topicToSubscribe: keyof TopicTypeMap;
@@ -104,11 +100,24 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             topicToSubscribe = PROJECTED_MAP_TOPIC;
             handler = handleProjectedMapTopic;
             topicId = PROJECTED_MAP_TOPIC;
-        } else {
+        } else if (mode === 'navigation') {
             topicToSubscribe = MAP_TOPIC;
             handler = handleMapTopic;
             topicId = MAP_TOPIC;
-        }
+        } else if (mode === 'none') {
+            sendMessage({
+                op: "call_service",
+                service: CONTROL_LAUNCH_SERVICE,
+                args: {
+                    launch_type: "car_vel",
+                    action: "start",
+                    package_name: "car_vel"
+                },
+                id: CONTROL_LAUNCH_SERVICE
+            });
+            return
+        } else return
+
         // 订阅
         sendMessage({
             op: "subscribe",
@@ -118,7 +127,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         emitter.on(topicToSubscribe, handler);
 
         return () => {
-            // 取消订阅
             sendMessage({
                 op: "unsubscribe",
                 topic: topicToSubscribe,
@@ -129,13 +137,23 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     }, [emitter, mode, sendMessage]);
 
     useEffect(() => {
+        const controlLaunchListener = (res: Control_Launch_Message) => {
+            console.log(res)
+            // setMode(res.values.success ? 'navigation' : 'none');
+        };
+        emitter.on(CONTROL_LAUNCH_SERVICE, controlLaunchListener);
+        return () => {
+            emitter.off(CONTROL_LAUNCH_SERVICE, controlLaunchListener);
+        }
+    }, [emitter, sendMessage])
+
+    useEffect(() => {
         sendMessage({
             op: "subscribe",
             id: LAUNCH_STATUS_TOPIC,
             topic: LAUNCH_STATUS_TOPIC,
         });
         const launchStatusListener = (res: Launch_Status_Message) => {
-            emitter.off(LAUNCH_STATUS_TOPIC, launchStatusListener);
             sendMessage({
                 op: "unsubscribe",
                 id: LAUNCH_STATUS_TOPIC,
@@ -146,20 +164,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             } else if (res.msg.navigation_running) {
                 setMode('navigation');
             } else {
-                sendMessage({
-                    op: "call_service",
-                    service: CONTROL_LAUNCH_SERVICE,
-                    args: {
-                        launch_type: "car_vel",
-                        action: "start",
-                        package_name: "car_vel"
-                    },
-                    id: CONTROL_LAUNCH_SERVICE
-                });
-                setMode('navigation');
+                setMode('none');
             }
         };
         emitter.on(LAUNCH_STATUS_TOPIC, launchStatusListener);
+
         return () => {
             emitter.off(LAUNCH_STATUS_TOPIC, launchStatusListener);
             sendMessage({
@@ -189,7 +198,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         <WebSocketContext.Provider value={{
             sendMessage, emitter, curMap, mode, setMode, mapList, mapData,
             setMapData, curEditMap,
-            setCurEditMap
+            setCurEditMap,
+            robotControlMode,
+            setRobotControlMode
         }}>
             {children}
         </WebSocketContext.Provider>

@@ -12,7 +12,7 @@ export const RobotControls = ({ robotWsUrl = "ws://192.168.0.155:8765" }: RobotC
     /* ---------- UI 状态（低频） ---------- */
     const [status, setStatus] = useState("正在连接...");
     const [statusColor, setStatusColor] = useState("orange");
-    const [maxSpeed, setMaxSpeed] = useState(200);
+    const [maxSpeed, setMaxSpeed] = useState(100);
 
     /* ---------- DOM Ref ---------- */
     const speedJoystickRef = useRef<HTMLDivElement>(null);
@@ -63,6 +63,68 @@ export const RobotControls = ({ robotWsUrl = "ws://192.168.0.155:8765" }: RobotC
     function clamp(value: number, min: number, max: number) {
         return Math.min(Math.max(value, min), max);
     }
+
+    /* ================= 键盘控制 ================= */
+    const keyState = useRef({
+        ArrowUp: false,
+        ArrowDown: false,
+        ArrowLeft: false,
+        ArrowRight: false,
+    });
+    const sendImmediateCommand = useCallback(() => {
+        sendMessage(
+            JSON.stringify(controlRef.current)
+        );
+    }, [sendMessage]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                keyState.current[e.key as keyof typeof keyState.current] = true;
+
+                // 更新控制值
+                updateControlValues(keyState.current);
+                sendControlCommand();
+            }
+        };
+
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                keyState.current[e.key as keyof typeof keyState.current] = false;
+                // 更新控制值
+                updateControlValues(keyState.current);
+                sendImmediateCommand();
+            }
+        };
+
+        const updateControlValues = (keys: typeof keyState.current) => {
+            let vx = 0;
+            let vy = 0;
+            const vtheta = 0;
+
+            if (keys.ArrowUp) vx = maxSpeed;
+            if (keys.ArrowDown) vx = -maxSpeed;
+            if (keys.ArrowLeft) vy = -maxSpeed;
+            if (keys.ArrowRight) vy = maxSpeed;
+
+            // 更新控制引用
+            controlRef.current.vx = vx;
+            controlRef.current.vy = vy;
+            controlRef.current.vtheta = vtheta;
+        };
+
+        // 添加键盘事件监听器
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        // 组件卸载时清理事件监听器
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [maxSpeed, sendControlCommand]);
 
     /* ================= 游戏手柄 ================= */
 
@@ -202,6 +264,9 @@ export const RobotControls = ({ robotWsUrl = "ws://192.168.0.155:8765" }: RobotC
                         style={{ flex: 1 }}
                     />
                     <span style={{ marginLeft: 8, minWidth: 40 }}>{maxSpeed}</span>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 12, color: '#aaa' }}>
+                    使用键盘方向键控制机器人移动
                 </div>
             </div>
 

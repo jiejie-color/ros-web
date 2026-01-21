@@ -124,7 +124,7 @@ export const RobotControls = ({ robotWsUrl = "ws://192.168.0.155:8765" }: RobotC
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
         };
-    }, [maxSpeed, sendControlCommand]);
+    }, [maxSpeed, sendControlCommand, sendImmediateCommand]);
 
     /* ================= 游戏手柄 ================= */
 

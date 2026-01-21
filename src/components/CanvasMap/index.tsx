@@ -31,9 +31,9 @@ const CanvasMap = () => {
   const [mapRotation, setMapRotation] = useState<number>(0);
   const [isLaser, setIsLaser] = useState<boolean>(false);
   const [isPlan, setIsPlan] = useState<boolean>(true);
-  const [isCostMap, setIsCostMap] = useState<boolean>(true);
+  const [isCostMap, setIsCostMap] = useState<boolean>(false);
   const [freePoints, setFreePoints] = useState<{ x: number; y: number }[]>([]);
-  const { sendMessage, mode, setMode, mapData, robotControlMode } = useWebSocketContext();
+  const { sendMessage, mode, setMode, mapData, robotControlMode, isLoad } = useWebSocketContext();
   const { robot, waypoints, laserScan, plan, global_costmap } = useGetData();
   const mapCacheRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -121,6 +121,28 @@ const CanvasMap = () => {
 
   return (
     <>
+      {isLoad ?
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 10
+        }}>
+          <div style={{
+            color: 'white',
+            fontSize: '18px',
+            fontWeight: 'bold'
+          }}>
+            地图加载中...
+          </div>
+        </div> : null}
+
       <Top></Top>
       <div ref={containerRef} style={{ width: "100vw", height: "100vh", backgroundColor: "#303030" }}>
         <canvas ref={canvasRef} />
@@ -156,7 +178,6 @@ const CanvasMap = () => {
         setIsCostMap={setIsCostMap}
       ></Bottom>
       {robotControlMode === "open" ? <RobotControls></RobotControls> : null}
-
     </>
   );
 };

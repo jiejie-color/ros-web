@@ -12,6 +12,7 @@ interface WebSocketProviderProps {
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
     const [emitter] = useState(new SimpleEventEmitter());
     const [curMap, setCurMap] = useState<string>("");
+    const [isLoad, setIsLoad] = useState<boolean>(true);
     const [mode, setMode] = useState<Mode>(''); // 新增状态控制当前激活的模式
     const [mapList, setMapList] = useState<string[]>([]);
     const [curEditMap, setCurEditMap] = useState<string>("");
@@ -117,14 +118,16 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             });
             return
         } else return
-
         // 订阅
         sendMessage({
             op: "subscribe",
             topic: topicToSubscribe,
             id: topicId
         });
-        emitter.on(topicToSubscribe, handler);
+        emitter.on(topicToSubscribe, (res) => {
+            handler(res)
+            setIsLoad(false)
+        });
 
         return () => {
             sendMessage({
@@ -200,7 +203,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
             setMapData, curEditMap,
             setCurEditMap,
             robotControlMode,
-            setRobotControlMode
+            setRobotControlMode,
+            isLoad,
         }}>
             {children}
         </WebSocketContext.Provider>

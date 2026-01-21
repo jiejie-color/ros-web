@@ -63,12 +63,12 @@ export const useGetData = () => {
 
     useEffect(() => {
         if (mode === "mapping") {
-            sendMessage({ op: "subscribe", topic: ODOMETRY_TOPIC, throttle_rate: 200 });
+            sendMessage({ op: "subscribe", topic: ODOMETRY_TOPIC, throttle_rate: 400 });
             emitter.on(ODOMETRY_TOPIC, handleOdometryTopic);
         }
 
         if (mode === "navigation") {
-            sendMessage({ op: "subscribe", topic: ROBOT_POSE_TOPIC, throttle_rate: 200 });
+            sendMessage({ op: "subscribe", topic: ROBOT_POSE_TOPIC, throttle_rate: 400 });
             emitter.on(ROBOT_POSE_TOPIC, handleRobotPoseTopic);
         }
 

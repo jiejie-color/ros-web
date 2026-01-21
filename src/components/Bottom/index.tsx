@@ -30,7 +30,7 @@ export const Bottom = ({
   isCostMap: boolean;
   setIsCostMap: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
-  const { sendMessage, curEditMap, emitter } = useWebSocketContext();
+  const { sendMessage, curEditMap, emitter, mapData } = useWebSocketContext();
 
 
   const handleSaveEditedMaps = useCallback((res: Save_Edited_Maps_Message) => {
@@ -51,11 +51,11 @@ export const Bottom = ({
 
   useEffect(() => {
     if (!isCostMap) return;
-
+    if (!mapData) return
     sendMessage({
       op: "subscribe",
       topic: GLOBAL_COSTMAP_TOPIC,
-      throttle_rate: 100,
+      throttle_rate: 500,
     });
 
     return () => {
@@ -64,7 +64,7 @@ export const Bottom = ({
         topic: GLOBAL_COSTMAP_TOPIC,
       });
     };
-  }, [isCostMap, sendMessage]);
+  }, [isCostMap, mapData, sendMessage]);
 
   useEffect(() => {
     if (!isLaser) return;

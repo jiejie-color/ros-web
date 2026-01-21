@@ -96,6 +96,7 @@ interface WebSocketContextType {
     setCurEditMap: React.Dispatch<React.SetStateAction<string>>;
     robotControlMode: string;
     setRobotControlMode: React.Dispatch<React.SetStateAction<string>>;
+    isLoad: boolean;
 }
 
 export const WebSocketContext = createContext<WebSocketContextType | null>(null);
